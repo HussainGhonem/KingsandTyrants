@@ -148,26 +148,9 @@ function initPortraitSystem(options = {}) {
  * Enhanced openCharModal to use hybrid portrait system
  */
 async function openCharModalWithPortrait(id) {
-    const c = game.characters.find(x => x.id === id);
-    if (!c) return;
-
-    // Get appropriate portrait
-    const modelScene = document.getElementById('char-model-scene');
-    if (modelScene && portraitSystem) {
-        modelScene.innerHTML = await portraitSystem.getPortraitHTML(c);
-        
-        // If using canvas render, draw it
-        const canvas = modelScene.querySelector('.portrait-canvas');
-        if (canvas && typeof drawCharacterPortrait === 'function') {
-            requestAnimationFrame(() => drawCharacterPortrait(canvas, c));
-        }
+    if (typeof openCharModal === 'function') {
+        openCharModal(id);
     }
-
-    // Rest of modal population (existing code)
-    const modalName = document.getElementById('modal-char-name');
-    if (modalName) modalName.innerText = c.name;
-    
-    // ... continue with other modal elements ...
 }
 
 /**

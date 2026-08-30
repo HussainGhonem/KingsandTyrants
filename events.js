@@ -37,7 +37,24 @@ function randomChoice(array) {
 }
 
 function getCharacter(id) {
-    return game.characters?.find(c => c.id === id);
+    if (id === null || id === undefined) return null;
+    return game.characters?.find(c => c.id === id) || null;
+}
+
+function getHeadId() {
+    return game.dynasty?.headId || game.realm?.rulerId || game.characters?.find(c => c.isPlayer)?.id || 1;
+}
+
+function getHeirId() {
+    return game.dynasty?.heirId || game.realm?.heirId || game.characters?.find(c => c.role?.includes("Heir") || c.role?.includes("Crown Prince"))?.id || 2;
+}
+
+function getRulerCharacter() {
+    return getCharacter(getHeadId()) || game.characters?.find(c => c.isPlayer) || game.characters?.[0] || null;
+}
+
+function getHeirCharacter() {
+    return getCharacter(getHeirId()) || game.characters?.find(c => c.id !== getHeadId() && c.type === "family") || null;
 }
 
 function getFaction(id) {
@@ -618,12 +635,12 @@ const eventPool = [
 
                 act: () => {
 
-                    const a = getCharacter(2);
+                    const a = getHeirCharacter() || getCharacter(2);
 
                     if (a) {
 
                         changeOpinion(
-                            2,
+                            a.id,
                             -15,
                             "Confronted over officer meetings"
                         );
@@ -642,12 +659,12 @@ const eventPool = [
 
                 act: () => {
 
-                    const a = getCharacter(2);
+                    const a = getHeirCharacter() || getCharacter(2);
 
                     if (a) {
 
                         changeOpinion(
-                            2,
+                            a.id,
                             15,
                             "Promoted to Inspector General"
                         );
@@ -2552,8 +2569,9 @@ const eventPool = [
 
                     changeApproval(-8);
 
+                    const heirId = getHeirId();
                     changeOpinion(
-                        game.realm.heirId,
+                        heirId,
                         10,
                         "Protected from public scandal"
                     );
@@ -2575,8 +2593,9 @@ const eventPool = [
 
                 act: () => {
 
+                    const heirId = getHeirId();
                     changeOpinion(
-                        game.realm.heirId,
+                        heirId,
                         -10,
                         "Forced public apology"
                     );
@@ -2934,6 +2953,10 @@ function triggerEventModal(ev) {
 
     if (!ev) return;
 
+    if (typeof setSpeed === "function") {
+        setSpeed(0);
+    }
+
     game.activeEvent = ev;
 
     const titleEl =
@@ -3043,21 +3066,13 @@ function resolveEventChoice(idx) {
 
 function spawnDynastyChild() {
 
-    const dynasty =
-        game.characters?.filter(
+    const parent =
+        getHeirCharacter() ||
+        getRulerCharacter() ||
+        game.characters?.find(
             c =>
                 c.type === "family" ||
                 c.dynastyMember
-        ) || [];
-
-    const parent =
-        dynasty.find(
-            c =>
-                c.id === game.realm?.heirId
-        ) ||
-        dynasty.find(
-            c =>
-                c.id === game.realm?.rulerId
         );
 
     const spouse = parent && typeof game.getSpouse === "function"
@@ -3352,15 +3367,8 @@ function processCharacterDeaths() {
 
 function triggerSuccession() {
 
-    const oldRuler =
-        getCharacter(
-            game.realm?.rulerId
-        );
-
-    const heir =
-        getCharacter(
-            game.realm?.heirId
-        );
+    const oldRuler = getRulerCharacter();
+    const heir = getHeirCharacter();
 
     if (!heir) {
 
@@ -3394,8 +3402,8 @@ function triggerSuccession() {
         };
     }
 
-    game.realm.rulerId =
-        heir.id;
+    if (game.dynasty) game.dynasty.headId = heir.id;
+    if (game.realm) game.realm.rulerId = heir.id;
 
     heir.role =
         "Grand Duke";
@@ -3419,8 +3427,8 @@ function triggerSuccession() {
 
     if (nextHeir) {
 
-        game.realm.heirId =
-            nextHeir.id;
+        if (game.dynasty) game.dynasty.heirId = nextHeir.id;
+        if (game.realm) game.realm.heirId = nextHeir.id;
 
         nextHeir.role =
             "Crown Prince (Heir)";
@@ -3535,8 +3543,8 @@ function triggerRevolutionVictory() {
         leader.isPlayer =
             true;
 
-        game.realm.rulerId =
-            leader.id;
+        if (game.dynasty) game.dynasty.headId = leader.id;
+        if (game.realm) game.realm.rulerId = leader.id;
     }
 
     game.realm.regime =

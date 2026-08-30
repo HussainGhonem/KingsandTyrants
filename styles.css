@@ -586,7 +586,7 @@ header {
     border: 1px solid var(--accent-gold);
     border-radius: 8px;
     padding: 22px;
-    width: 560px;
+    width: 600px;
     max-width: 92vw;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
     max-height: 90vh;
@@ -654,7 +654,7 @@ header {
 }
 
 .char-model-scene {
-    height: 200px;
+    min-height: 220px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -662,6 +662,7 @@ header {
     border-radius: 8px;
     perspective: 1000px;
     overflow: hidden;
+    padding: 8px;
 }
 
 .character-figure {
@@ -1019,6 +1020,8 @@ header {
 .char-model-scene .character-figure {
     width: min(100%, 220px);
     height: 100%;
+    transform: none !important;
+    animation: none !important;
 }
 
 .char-model-scene .portrait-canvas {
