@@ -27,11 +27,16 @@ function switchMainView(v) {
         targetView.style.display = 'flex';
     }
 
-    const btns = document.querySelectorAll('.nav-btn');
-    for (const btn of btns) {
-        if (btn.textContent.trim().toLowerCase().includes(v)) {
-            btn.classList.add('active');
-            break;
+    const navBtn = document.querySelector(`.nav-btn[onclick*="'${v}'"]`) || document.querySelector(`.nav-btn[onclick*='"${v}"']`);
+    if (navBtn) {
+        navBtn.classList.add('active');
+    } else {
+        const btns = document.querySelectorAll('.nav-btn');
+        for (const btn of btns) {
+            if (btn.textContent.trim().toLowerCase().includes(v)) {
+                btn.classList.add('active');
+                break;
+            }
         }
     }
 

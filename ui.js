@@ -322,9 +322,11 @@ function renderGenerationalTimeline() {
 
 function selectProvince(id) {
     game.selectedProvinceId = id;
-    document.querySelectorAll('.province-path').forEach(p => p.classList.remove('selected'));
-    const activeSvg = document.getElementById(`prov-${id}`);
-    if (activeSvg) activeSvg.classList.add('selected');
+    if (typeof document !== 'undefined' && document.querySelectorAll) {
+        document.querySelectorAll('.province-path').forEach(p => p && p.classList && p.classList.remove('selected'));
+    }
+    const activeSvg = typeof document !== 'undefined' && document.getElementById ? document.getElementById(`prov-${id}`) : null;
+    if (activeSvg && activeSvg.classList) activeSvg.classList.add('selected');
 
     const p = game.provinces.find(x => x.id === id);
     if (!p) return;
