@@ -1,0 +1,6 @@
+blender-*.msi
+.DS_Store
+
+# Local browser save/export artifacts
+*.save
+*.local

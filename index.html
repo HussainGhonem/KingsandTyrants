@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynasty & State: Generational Simulation Engine</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <!-- HEADER -->
+    <header>
+        <div class="dynasty-badge" onclick="switchMainView('dynasty')">
+            <div class="dynasty-crest" id="dynasty-icon">V</div>
+            <div class="realm-info">
+                <h1 id="ruler-title-name">Grand Duke Victor Vance</h1>
+                <small id="dynasty-name">House Vance of Vancuria • Primogeniture Succession</small>
+            </div>
+        </div>
+        <div class="stats-bar">
+            <div class="stat-item"><span>TREASURY</span><span id="stat-treasury" style="color:var(--accent-gold)">$10.45B</span></div>
+            <div class="stat-item"><span>GDP</span><span id="stat-gdp">$82.4B</span></div>
+            <div class="stat-item"><span>DEBT</span><span id="stat-debt" style="color:var(--danger)">$5.0B</span></div>
+            <div class="stat-item"><span>CURRENCY</span><span id="stat-currency" style="color:var(--accent-blue)">1 KR = $0.25</span></div>
+            <div class="stat-item"><span>LEGITIMACY</span><span id="stat-legitimacy">72%</span></div>
+            <div class="stat-item"><span>STABILITY</span><span id="stat-stability">64%</span></div>
+            <div class="stat-item"><span>APPROVAL</span><span id="stat-approval">48%</span></div>
+            <div class="stat-item"><span>COUP RISK</span><span id="stat-coup" style="color:var(--warning)">8%</span></div>
+            <div class="stat-item"><span>PRESTIGE</span><span id="stat-prestige">890</span></div>
+            <div class="stat-item"><span>STRESS</span><span id="stat-stress" style="color:var(--danger)">15/100</span></div>
+        </div>
+        <div class="time-controls">
+            <span id="date-display" style="margin-right: 8px; font-weight: bold; color: var(--accent-blue);">1 Aug 2034</span>
+            <button class="time-btn active" id="btn-pause" onclick="setSpeed(0)">⏸</button>
+            <button class="time-btn" id="btn-play" onclick="setSpeed(1)">▶</button>
+            <button class="time-btn" id="btn-fast" onclick="setSpeed(2)">⏩</button>
+            <button class="time-btn" id="btn-reset" style="margin-left: 6px; border: 1px solid var(--danger); color: var(--danger);" onclick="confirmResetGame()" title="Reset saved state and start a new campaign">⚙️ New Game</button>
+        </div>
+    </header>
+
+    <!-- 9-VIEW TOP NAVIGATION BAR -->
+    <div class="nav-bar">
+        <button class="nav-btn active" onclick="switchMainView('overview')">📰 WORLD</button>
+        <button class="nav-btn" onclick="switchMainView('dynasty')">👑 DYNASTY</button>
+        <button class="nav-btn" onclick="switchMainView('factions')">🏛️ POLITICS</button>
+        <button class="nav-btn" onclick="switchMainView('economy')">💰 ECONOMY</button>
+        <button class="nav-btn" onclick="switchMainView('map')">🗺️ REALM</button>
+        <button class="nav-btn" onclick="switchMainView('military')">⚔️ MILITARY</button>
+        <button class="nav-btn" onclick="switchMainView('intel')">🕵️ INTELLIGENCE</button>
+        <button class="nav-btn" onclick="switchMainView('diplomacy')">🌐 DIPLOMACY</button>
+        <button class="nav-btn" onclick="switchMainView('legacy')">📜 HISTORY</button>
+    </div>
+
+    <!-- MAIN LAYOUT -->
+    <div class="main-layout">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="switchTab('family')">Dynasty & Family</button>
+                <button class="tab-btn" onclick="switchTab('cabinet')">Cabinet & Nobles</button>
+            </div>
+            <div class="character-list" id="court-list"></div>
+        </div>
+
+        <!-- VIEWPORT PANELS -->
+        <div class="viewport">
+
+            <!-- 1. WORLD / GAZETTE -->
+            <div id="view-overview" class="view-panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                    <div class="newspaper-tabs">
+                        <button class="media-tab-btn active" id="tab-press-state" onclick="switchMediaOutlet('state')">👑 The Crown Gazette (State)</button>
+                        <button class="media-tab-btn" id="tab-press-opp" onclick="switchMediaOutlet('opposition')">✊ The Vanguard (Opposition)</button>
+                        <button class="media-tab-btn" id="tab-press-tabloid" onclick="switchMediaOutlet('tabloid')">💋 Palace Whisper (Tabloid)</button>
+                    </div>
+                    <span style="font-size:0.75rem; color:var(--accent-gold); font-weight:bold;">Sovereign Information Ecosystem</span>
+                </div>
+
+                <div class="newspaper-panel" id="newspaper-panel">
+                    <div class="news-header">
+                        <h2 id="news-outlet-title">The Crown Gazette</h2>
+                        <div class="news-subbar">
+                            <span id="news-date">AUGUST 2034 EDITION</span>
+                            <span id="news-bias-tag">OFFICIAL STATE DISPATCH • CAPITAL CITADEL</span>
+                            <span>PRICE: 2.50 KR</span>
+                        </div>
+                    </div>
+                    <div class="news-grid">
+                        <div class="headline-story">
+                            <h3 id="news-headline">SOVEREIGN DECREE ENSURES MONETARY STABILITY</h3>
+                            <p id="news-lead">High technocrats and state ministries reported steady growth across primary industrial export sectors.</p>
+                        </div>
+                        <div class="side-stories" id="news-sides">
+                            <div class="side-story"><h4>Diplomatic Envoy Arrives</h4><p>Trade delegates dock at harbor for maritime negotiations.</p></div>
+                            <div class="side-story"><h4>Grid Overhaul Concluded</h4><p>Engineers finish routine servicing of the northern gas corridor.</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h4 style="color:var(--accent-blue); margin-bottom:6px; font-size:0.75rem; text-transform:uppercase;">🔥 Live Social Media Timeline (Vancuria Now)</h4>
+                    <div class="social-timeline" id="social-feed-container"></div>
+                </div>
+
+                <div class="grid-4">
+                    <div class="dash-card"><small style="color:var(--text-muted)">PARLIAMENT SUPPORT</small><h3 id="dash-parliament" style="color:var(--accent-blue)">54%</h3><small>Opposition: <span id="dash-opp">31%</span></small></div>
+                    <div class="dash-card"><small style="color:var(--text-muted)">INFLATION / UNEMPLOYMENT</small><h3 id="dash-econ">3.4% / 6.8%</h3><small>Regime: <span id="dash-regime" style="color:var(--accent-gold)">Constitutional</span></small></div>
+                    <div class="dash-card"><small style="color:var(--text-muted)">DYNASTY LEGITIMACY</small><h3 id="dash-legitimacy" style="color:var(--success)">72%</h3><small>Sec. Security: <span id="dash-security">83%</span></small></div>
+                    <div class="dash-card"><small style="color:var(--text-muted)">REVOLUTIONARY PRESSURE</small><h3 id="dash-rev" style="color:var(--warning)">14%</h3><small>Judiciary Ind.: <span id="dash-judiciary">75%</span></small></div>
+                </div>
+
+                <div class="panel" style="flex:1; display:flex; flex-direction:column;">
+                    <h4 style="color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; font-size:0.72rem;">Sovereign Decree Chronicle & Log</h4>
+                    <div id="log" style="flex:1; overflow-y:auto; font-family:monospace; font-size:0.78rem; color:#94a3b8; line-height:1.5;"></div>
+                </div>
+            </div>
+
+            <!-- 2. DYNASTY -->
+            <div id="view-dynasty" class="view-panel" style="display:none;">
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold);">HOUSE VANCE — INSTITUTIONAL OVERVIEW</h3>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-top:8px; font-size:0.8rem;">
+                        <div>Dynasty Prestige: <strong id="dyn-prestige" style="color:var(--accent-gold)">1,420</strong></div>
+                        <div>Dynasty Wealth: <strong id="dyn-wealth">$8.7B</strong></div>
+                        <div>Public Favor: <strong id="dyn-favor">61%</strong></div>
+                        <div>Political Influence: <strong id="dyn-influence">74%</strong></div>
+                        <div>Succession Security: <strong id="dyn-security">83%</strong></div>
+                        <div>House Reputation: <strong style="color:var(--accent-blue)" id="dyn-reputation">Architects of Vancuria</strong></div>
+                    </div>
+                </div>
+
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold); margin-bottom:6px;">Personal Sovereign Lifestyle & Court Activities</h3>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+                        <button class="action-btn" onclick="hostLifestyleEvent('gala')">🍷 Host Royal Gala (-$0.1B, +15 Prestige, -10 Stress)</button>
+                        <button class="action-btn" onclick="hostLifestyleEvent('retreat')">🌿 Country Estate Retreat (-$0.05B, -20 Stress)</button>
+                        <button class="action-btn" onclick="hostLifestyleEvent('inspection')">🎖️ Military Inspection (-$0.05B, +10 Military Favor)</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:12px;">💍 Marriage Market Proposals</h3>
+                    <div class="grid-3" id="marriage-proposals-container"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:12px;">🏛️ 6 Competing Great Houses</h3>
+                    <div class="grid-3" id="competing-houses-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:12px;">🌳 Multi-Generational Visual Dynasty Tree</h3>
+                    <div id="dynasty-tree-visualizer" style="font-family:monospace; font-size:0.85rem; line-height:1.8; color:var(--text-main); overflow-x:auto;"></div>
+                </div>
+            </div>
+
+            <!-- 3. POLITICS -->
+            <div id="view-factions" class="view-panel" style="display:none;">
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold); margin-bottom:4px;">PARLIAMENTARY SEAT DISTRIBUTION</h3>
+                    <div class="parliament-bar" id="parliament-seat-bar"></div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+                        <span>Pro-Crown Bloc: 62%</span>
+                        <span>Opposition Bloc: 38%</span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Interactive Constitutional Articles Editor</h3>
+                    <div class="grid-3" id="constitution-editor-container"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Political Parties Ecosystem</h3>
+                    <div class="grid-3" id="parties-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Demographic Sector Approval & Polling</h3>
+                    <div class="grid-3" id="demographics-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Estate Factions</h3>
+                    <div class="grid-3" id="factions-grid"></div>
+                </div>
+
+                <!-- REVOLUTIONARY CRISIS ENGINE DASHBOARD -->
+                <div class="panel">
+                    <h3 style="color:#dc2626; margin-bottom:8px;">⚑ Revolutionary Crisis Engine</h3>
+                    <div id="revolution-dashboard"></div>
+                </div>
+            </div>
+
+            <!-- 4. ECONOMY -->
+            <div id="view-economy" class="view-panel" style="display:none;">
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold); margin-bottom:6px;">Sovereign Fiscal Budget & Debt Console</h3>
+                    <div id="budget-ledger-container" style="margin-bottom:10px;"></div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="action-btn primary" onclick="issueSovereignBonds(1.0)">📜 Issue $1B Bonds (+$1.0B Treasury)</button>
+                        <button class="action-btn primary" onclick="issueSovereignBonds(5.0)">📜 Issue $5B Bonds (+$5.0B Treasury)</button>
+                        <button class="action-btn" style="border-color:var(--success);" onclick="repaySovereignBonds(1.0)">💰 Repay $1B Debt (-$1.0B Treasury)</button>
+                        <button class="action-btn" style="border-color:var(--success);" onclick="repaySovereignBonds(5.0)">💰 Repay $5B Debt (-$5.0B Treasury)</button>
+                        <button class="action-btn" onclick="adjustTax(1)">📈 Raise Taxes (+Revenue, -Approval)</button>
+                        <button class="action-btn" onclick="adjustTax(-1)">📉 Lower Taxes (+Approval, -Revenue)</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Mega-Corporations & Oligarch Entities</h3>
+                    <div class="grid-3" id="corporations-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Strategic Commodities & Global Market</h3>
+                    <div class="grid-4" id="commodities-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Infrastructure Mega-Projects</h3>
+                    <div class="grid-3" id="projects-grid"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--danger); margin-bottom:8px;">Classified Black Projects</h3>
+                    <div class="grid-3" id="black-projects-grid"></div>
+                </div>
+            </div>
+
+            <!-- 5. REALM MAP -->
+            <div id="view-map" class="view-panel" style="display:none;">
+                <div class="map-container">
+                    <div class="map-svg-wrap">
+                        <svg viewBox="0 0 600 450" width="100%" height="100%">
+                            <polygon points="120,40 300,30 340,110 180,130" class="province-path" id="prov-1" onclick="selectProvince(1)" />
+                            <text x="230" y="80" class="map-label">NORTH BASIN</text>
+                            
+                            <polygon points="300,30 520,40 480,170 340,110" class="province-path" id="prov-2" onclick="selectProvince(2)" />
+                            <text x="410" y="100" class="map-label">EAST CORRIDOR</text>
+                            
+                            <polygon points="180,130 340,110 320,240 160,220" class="province-path selected" id="prov-3" onclick="selectProvince(3)" />
+                            <text x="250" y="180" class="map-label">CAPITAL CITADEL</text>
+
+                            <polygon points="340,110 480,170 460,300 320,240" class="province-path" id="prov-4" onclick="selectProvince(4)" />
+                            <text x="400" y="210" class="map-label">IRON COAST</text>
+
+                            <polygon points="160,220 320,240 300,350 140,320" class="province-path" id="prov-5" onclick="selectProvince(5)" />
+                            <text x="230" y="280" class="map-label">SOUTH REACH</text>
+
+                            <polygon points="30,40 120,40 180,130 100,160 30,120" class="province-path" id="prov-6" onclick="selectProvince(6)" />
+                            <text x="90" y="100" class="map-label">HIGHLANDS</text>
+
+                            <polygon points="480,170 580,180 560,340 460,300" class="province-path" id="prov-7" onclick="selectProvince(7)" />
+                            <text x="520" y="260" class="map-label">QAMAR REACH</text>
+
+                            <polygon points="140,320 300,350 460,300 560,340 500,430 80,410" class="province-path" id="prov-8" onclick="selectProvince(8)" />
+                            <text x="300" y="380" class="map-label">WEST FRONTIER</text>
+                        </svg>
+                    </div>
+                    <div class="map-details" id="province-details"></div>
+                </div>
+            </div>
+
+            <!-- 6. MILITARY -->
+            <div id="view-military" class="view-panel" style="display:none;">
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold);">ARMED FORCES COMMAND STRUCTURE</h3>
+                    <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
+                        <button class="action-btn primary" onclick="adjustMilitaryBudget(0.5)">🎖️ Defense Procurement (-$0.5B, +Readiness)</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">6 Armed Forces Branches & Commanders</h3>
+                    <div class="grid-3" id="military-branches-grid"></div>
+                </div>
+            </div>
+
+            <!-- 7. INTELLIGENCE -->
+            <div id="view-intel" class="view-panel" style="display:none;">
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold);">DIRECTORATE OF NATIONAL SECURITY</h3>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-top:8px; font-size:0.8rem;">
+                        <div>Domestic Intel: <strong>72%</strong></div>
+                        <div>Foreign Intel: <strong>48%</strong></div>
+                        <div>Cyber Operations: <strong>81%</strong></div>
+                        <div>Counterintel: <strong>64%</strong></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Active Surveillance & Wiretaps</h3>
+                    <div id="wiretaps-container" style="font-size:0.82rem; color:var(--text-main);"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--warning); margin-bottom:8px;">Court Rumors & Investigation Board</h3>
+                    <div class="grid-3" id="rumors-container"></div>
+                </div>
+            </div>
+
+            <!-- 8. DIPLOMACY -->
+            <div id="view-diplomacy" class="view-panel" style="display:none;">
+                <div class="dash-card">
+                    <h3 style="color:var(--accent-gold);">INTERNATIONAL DIPLOMATIC CORPS</h3>
+                    <p style="font-size:0.8rem; color:var(--text-muted);">Manage relations, defense treaties, and trade corridors with foreign sovereign powers.</p>
+                </div>
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Foreign Powers & Leaders</h3>
+                    <div class="grid-3" id="foreign-powers-grid"></div>
+                </div>
+            </div>
+
+            <!-- 9. HISTORY -->
+            <div id="view-legacy" class="view-panel" style="display:none;">
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">📜 100+ Year Generational History Timeline</h3>
+                    <div id="generational-timeline-container" style="display:flex; flex-direction:column; gap:6px; font-family:monospace; font-size:0.8rem; color:#94a3b8; max-height:220px; overflow-y:auto; margin-bottom:14px; background:#070a12; padding:10px; border-radius:6px; border:1px solid var(--panel-border);"></div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="color: var(--accent-gold); margin-bottom:8px;">Dynastic Legacy & History Evaluation (HISTORY JUDGES YOU)</h3>
+                    <div id="legacy-history-container" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal" id="char-modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <h3 id="modal-char-name" style="color:var(--accent-gold);"></h3>
+                <span id="modal-char-opinion" style="font-weight:bold; font-size:0.85rem;"></span>
+            </div>
+
+            <div class="char-model-panel">
+                <div class="char-model-scene" id="char-model-scene" aria-label="Character 3D model preview"></div>
+            </div>
+
+            <p id="modal-char-details" style="font-size:0.75rem; color:var(--accent-blue); margin:4px 0 10px 0;"></p>
+            <div id="modal-claim-box" style="margin-bottom:10px; font-size:0.75rem; background:#070a12; padding:8px; border-radius:4px; border:1px solid #1e293b;"></div>
+            
+            <div style="margin-top:6px; font-size:0.75rem; color:var(--accent-gold); font-weight:bold;">Character Memory Log:</div>
+            <div id="modal-memory-box" style="font-size:0.72rem; background:#0b1120; padding:6px; border-radius:4px; border:1px solid #1e293b; max-height:80px; overflow-y:auto; margin-bottom:8px;"></div>
+
+            <div class="action-grid" id="modal-actions"></div>
+            <button style="margin-top:12px; width:100%; background:#334155; border:none; color:white; padding:8px; border-radius:4px; cursor:pointer;" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <div class="event-modal" id="event-modal">
+        <div class="event-box">
+            <div class="event-title" id="event-modal-title"></div>
+            <div class="event-desc" id="event-modal-desc"></div>
+            <div class="event-choices" id="event-modal-choices"></div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="gameState.js"></script>
+    <script src="revolution.js"></script>
+    <script src="simulation.js"></script>
+    <script src="events.js?v=20260831"></script>
+    <script src="ui.js"></script>
+    <script src="portraitSystem.js"></script>
+    <script src="actions.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
