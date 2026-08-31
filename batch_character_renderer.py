@@ -137,8 +137,6 @@ def render_character(char_data):
     
     shoe = mat("Shoes", (0.48, 0.34, 0.17), 0.25, 0.25)
     eye = mat("Eye", (0.025, 0.018, 0.012), 0, 0.18)
-    lips = mat("Lips", (0.28, 0.055, 0.045), 0, 0.28)
-    shadow = mat("Clothing Shadow", (0.035, 0.025, 0.03), 0, 0.52)
     
     # ------- BODY -------
     # Legs
@@ -162,8 +160,6 @@ def render_character(char_data):
     # Eyes
     for x in (-0.105, 0.105):
         uv_sphere("Eye", (x, -0.255, 3.54), (0.038, 0.020, 0.025), eye)
-        curve_tube("Brow", [(x - 0.055, -0.265, 3.63), (x, -0.278, 3.65), (x + 0.055, -0.265, 3.63)], 0.014, hair)
-    uv_sphere("Lips", (0, -0.278, 3.33), (0.075, 0.025, 0.028), lips)
     
     # Arms
     for x, side in [(-0.55, -1), (0.55, 1)]:
@@ -177,8 +173,6 @@ def render_character(char_data):
     # Hair
     uv_sphere("Hair", (0, 0.05, 3.64), (0.34, 0.29, 0.40), hair)
     uv_sphere("Hair bun", (0.04, 0.12, 3.88), (0.22, 0.20, 0.23), hair)
-    for x in (-0.27, -0.20, 0.20, 0.27):
-        curve_tube("Hair strand", [(x, -0.02, 3.83), (x * 1.1, -0.12, 3.62), (x * 0.9, -0.18, 3.42)], 0.025, hair)
     
     # ------- OUTFIT -------
     if char_data["type"] == "female":
@@ -194,7 +188,6 @@ def render_character(char_data):
         
         # High collar
         cyl("Collar", (0, -0.005, 2.91), 0.145, 0.16, body_material)
-        curve_tube("Waist belt", [(-0.34, -0.29, 2.02), (0, -0.32, 1.96), (0.34, -0.29, 2.02)], 0.026, gold)
         
         # Robe panels
         for x in (-0.42, 0.42):
@@ -238,8 +231,6 @@ def render_character(char_data):
         
         # Vest
         cyl("Vest", (0, -0.02, 2.30), 0.25, 0.55, robe_material)
-        curve_tube("Coat piping", [(-0.18, -0.30, 2.78), (-0.18, -0.31, 1.38)], 0.018, gold)
-        curve_tube("Coat piping", [(0.18, -0.30, 2.78), (0.18, -0.31, 1.38)], 0.018, gold)
     
     # Shoes (both genders)
     for x in (-0.18, 0.18):
