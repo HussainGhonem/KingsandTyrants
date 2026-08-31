@@ -6,9 +6,7 @@ SOURCE = ROOT / "assets" / "blender" / "female-character-cc0" / "female-characte
 OUT = ROOT / "portraits"
 
 VARIANTS = {
-    "victor_vance": {"hair": (0.02, 0.01, 0.006, 1), "kjol": (0.08, 0.12, 0.18, 1), "tröja": (0.12, 0.16, 0.24, 1)},
     "duchess_elena": {"hair": (0.06, 0.02, 0.01, 1), "kjol": (0.38, 0.22, 0.12, 1), "tröja": (0.55, 0.40, 0.24, 1)},
-    "lord_kravitz": {"hair": (0.01, 0.01, 0.01, 1), "kjol": (0.20, 0.03, 0.04, 1), "tröja": (0.28, 0.05, 0.06, 1)},
 }
 
 def set_material_color(name, color):
