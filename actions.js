@@ -1292,6 +1292,7 @@ function log(msg) {
 function saveGame() {
     const validDate = (game.date instanceof Date && !isNaN(game.date.getTime())) ? game.date : new Date();
     const saveData = {
+        saveVersion: 2,
         ...game,
         date: validDate.toISOString(),
         activeEvent: null,
@@ -1309,6 +1310,10 @@ function loadGame() {
 
     try {
         const loaded = JSON.parse(saved);
+        if (loaded.saveVersion !== 2) {
+            localStorage.removeItem('vancuria_save');
+            return false;
+        }
         Object.assign(game, loaded);
 
         game.date = loaded.date ? new Date(loaded.date) : new Date();
@@ -1363,7 +1368,7 @@ function startNewGameConfigured(config = {}) {
     const difficulty = config.difficulty || "Normal";
     const scenario = config.scenario || "crisis";
 
-    game.date = new Date(2034, 0, 1);
+    game.date = new Date(2026, 0, 1);
     game.totalMonthsPassed = 0;
     game.usedEvents = new Set();
     
@@ -1383,10 +1388,10 @@ function startNewGameConfigured(config = {}) {
 
     // Apply scenario modifier
     const scenarioMap = {
-        stable: { approval: 70, fervor: 10, treasury: 15, coupRisk: 5 },
-        crisis: { approval: 48, fervor: 35, treasury: 10.45, coupRisk: 15 },
-        revolution: { approval: 32, fervor: 75, treasury: 7.0, coupRisk: 30 },
-        military: { approval: 45, fervor: 25, treasury: 9.0, coupRisk: 40 }
+        stable: { approval: 70, fervor: 10, treasury: 5.0, coupRisk: 5 },
+        crisis: { approval: 48, fervor: 35, treasury: 5.0, coupRisk: 15 },
+        revolution: { approval: 32, fervor: 75, treasury: 5.0, coupRisk: 30 },
+        military: { approval: 45, fervor: 25, treasury: 5.0, coupRisk: 40 }
     };
     const mod = scenarioMap[scenario] || scenarioMap.crisis;
     game.realm.approval = mod.approval;
