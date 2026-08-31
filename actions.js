@@ -1145,11 +1145,17 @@ function openCharModal(id) {
         });
         relHtml += '</div>';
 
-        const headId = game.dynasty.headId;
+        const headId = typeof getHeadId === 'function' ? getHeadId() : (game.dynasty?.headId || game.realm?.rulerId);
+        const activeRuler = typeof getRulerCharacter === 'function' ? getRulerCharacter() : game.characters.find(ch => ch.isPlayer);
+        const isSelf = c.isPlayer || c.id === headId || c.id === activeRuler?.id || c.id === game.realm?.rulerId;
         const isAllied = game.getRelation(headId, c.id).alliance;
 
         let actionBtns = '';
-        if (c.status === "Imprisoned") {
+        if (c.status === "Deceased") {
+            actionBtns = `<div style="grid-column:1/-1; text-align:center; padding:8px; color:var(--text-muted);">✝️ Deceased Historical Character</div>`;
+        } else if (isSelf) {
+            actionBtns = `<div style="grid-column:1/-1; text-align:center; padding:8px; color:var(--accent-gold); font-weight:bold;">👑 Reigning Sovereign (Active Player)</div>`;
+        } else if (c.status === "Imprisoned") {
             actionBtns = `
                 <button class="action-btn" onclick="charAction(${c.id}, 'pardon')">🕊️ Royal Pardon</button>
                 <button class="action-btn" onclick="charAction(${c.id}, 'execute')">☠️ Execute Treason</button>

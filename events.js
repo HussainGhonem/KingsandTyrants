@@ -42,19 +42,52 @@ function getCharacter(id) {
 }
 
 function getHeadId() {
-    return game.dynasty?.headId || game.realm?.rulerId || game.characters?.find(c => c.isPlayer)?.id || 1;
+    const activePlayer = game.characters?.find(c => c.isPlayer && (c.status === "Active" || c.status === "Alive"));
+    if (activePlayer) return activePlayer.id;
+
+    if (game.dynasty?.headId) {
+        const head = game.characters?.find(c => c.id === game.dynasty.headId && (c.status === "Active" || c.status === "Alive"));
+        if (head) return head.id;
+    }
+
+    if (game.realm?.rulerId) {
+        const ruler = game.characters?.find(c => c.id === game.realm.rulerId && (c.status === "Active" || c.status === "Alive"));
+        if (ruler) return ruler.id;
+    }
+
+    const fallback = game.characters?.find(c => (c.status === "Active" || c.status === "Alive"));
+    return fallback ? fallback.id : 1;
 }
 
 function getHeirId() {
-    return game.dynasty?.heirId || game.realm?.heirId || game.characters?.find(c => c.role?.includes("Heir") || c.role?.includes("Crown Prince"))?.id || 2;
+    const currentHeadId = getHeadId();
+    if (game.dynasty?.heirId) {
+        const heir = game.characters?.find(c => c.id === game.dynasty.heirId && c.id !== currentHeadId && (c.status === "Active" || c.status === "Alive"));
+        if (heir) return heir.id;
+    }
+
+    const candidate = game.characters?.find(c => c.id !== currentHeadId && (c.role?.includes("Heir") || c.role?.includes("Crown Prince") || c.type === "family") && (c.status === "Active" || c.status === "Alive"));
+    return candidate ? candidate.id : 2;
 }
 
 function getRulerCharacter() {
-    return getCharacter(getHeadId()) || game.characters?.find(c => c.isPlayer) || game.characters?.[0] || null;
+    const activePlayer = game.characters?.find(c => c.isPlayer && (c.status === "Active" || c.status === "Alive"));
+    if (activePlayer) return activePlayer;
+
+    const headId = getHeadId();
+    const head = getCharacter(headId);
+    if (head && (head.status === "Active" || head.status === "Alive")) return head;
+
+    return game.characters?.find(c => (c.status === "Active" || c.status === "Alive")) || null;
 }
 
 function getHeirCharacter() {
-    return getCharacter(getHeirId()) || game.characters?.find(c => c.id !== getHeadId() && c.type === "family") || null;
+    const heirId = getHeirId();
+    const heir = getCharacter(heirId);
+    if (heir && (heir.status === "Active" || heir.status === "Alive")) return heir;
+
+    const currentHeadId = getHeadId();
+    return game.characters?.find(c => c.id !== currentHeadId && c.type === "family" && (c.status === "Active" || c.status === "Alive")) || null;
 }
 
 function getFaction(id) {
@@ -86,14 +119,21 @@ function changeTreasury(amount) {
 }
 
 function changeFervor(amount) {
-    if (!game.revolution) return;
+    if (!game.revolution) game.revolution = {};
+    if (!game.regime) game.regime = {};
+
+    const delta = Number(amount) || 0;
 
     game.revolutionaryFervor = clamp(
-        (game.revolutionaryFervor || 0) + amount
+        (game.revolutionaryFervor || 0) + delta
     );
 
     game.revolution.fervor = clamp(
-        (game.revolution.fervor || 0) + amount
+        (game.revolution.fervor || 0) + delta
+    );
+
+    game.regime.revolutionaryPressure = clamp(
+        (game.regime.revolutionaryPressure || 0) + delta
     );
 }
 
@@ -2939,7 +2979,7 @@ function triggerRandomEvent() {
 
     game.usedEvents.add(ev.id);
 
-    setSpeed?.(0);
+    if (typeof setSpeed === "function") setSpeed(0);
 
     triggerEventModal(ev);
 }
@@ -3384,7 +3424,9 @@ function processCharacterDeaths() {
             );
 
             if (
-                character.id === game.realm?.rulerId
+                character.id === game.realm?.rulerId ||
+                character.id === game.dynasty?.headId ||
+                character.isPlayer
             ) {
                 triggerSuccession();
             }
@@ -3394,87 +3436,62 @@ function processCharacterDeaths() {
 
 
 function triggerSuccession() {
-
     const oldRuler = getRulerCharacter();
+    if (typeof evaluateSuccessionContest === "function") {
+        evaluateSuccessionContest(oldRuler || { isPlayer: true, name: "Former Sovereign" });
+        return;
+    }
+
     const heir = getHeirCharacter();
 
     if (!heir) {
-
-        logEvent(
-            "SUCCESSION CRISIS: No recognized heir exists."
-        );
-
+        logEvent("SUCCESSION CRISIS: No recognized heir exists.");
+        if (typeof evaluateDynastyExtinction === "function") evaluateDynastyExtinction();
         return;
     }
 
     if (oldRuler) {
-
-        oldRuler.status =
-            "Deceased";
-
+        oldRuler.status = "Deceased";
+        oldRuler.isPlayer = false;
         oldRuler.legacy = {
-
-            title:
-                generateLegacyTitle(
-                    oldRuler
-                ),
-
-            reignEnd:
-                game.date?.getFullYear?.() || 0,
-
-            prestige:
-                game.realm?.prestige || 0,
-
-            approval:
-                game.realm?.approval || 0
+            title: typeof generateLegacyTitle === "function" ? generateLegacyTitle(oldRuler) : "THE SOVEREIGN",
+            reignEnd: game.date?.getFullYear?.() || 2026,
+            prestige: game.realm?.prestige || 0,
+            approval: game.realm?.approval || 0
         };
     }
+
+    game.characters.forEach(c => { c.isPlayer = (c.id === heir.id); });
 
     if (game.dynasty) game.dynasty.headId = heir.id;
     if (game.realm) game.realm.rulerId = heir.id;
 
-    heir.role =
-        "Grand Duke";
-
-    heir.isPlayer =
-        true;
-
-    if (oldRuler) {
-        oldRuler.isPlayer = false;
-    }
+    heir.role = "Grand Duke (You)";
+    heir.isPlayer = true;
 
     // Find next heir
-    const nextHeir =
-        game.characters.find(
-            c =>
-                c.status === "Active" &&
-                c.type === "family" &&
-                c.id !== heir.id &&
-                c.age >= 16
-        );
+    const nextHeir = game.characters.find(
+        c => (c.status === "Active" || c.status === "Alive") && c.type === "family" && c.id !== heir.id && c.age >= 16
+    );
 
     if (nextHeir) {
-
         if (game.dynasty) game.dynasty.heirId = nextHeir.id;
         if (game.realm) game.realm.heirId = nextHeir.id;
-
-        nextHeir.role =
-            "Crown Prince (Heir)";
+        nextHeir.role = "Crown Prince (Heir)";
     }
 
     changePrestige(100);
 
-    logEvent(
-        `THE SUCCESSION: ${heir.name} has inherited the throne.`
-    );
+    logEvent(`THE SUCCESSION: ${heir.name} has inherited the throne.`);
 
-    if (
-        typeof showSuccessionModal === "function"
-    ) {
-        showSuccessionModal(
-            oldRuler,
-            heir
-        );
+    if (typeof triggerEventModal === "function") {
+        triggerEventModal({
+            title: "SUCCESSION: PEACEFUL CORONATION",
+            desc: `${oldRuler ? oldRuler.name : 'The former sovereign'} has passed away. ${heir.name} has ascended the throne. Long live ${heir.name}!`,
+            choices: [
+                { text: `Crown ${heir.name} Grand Duke and pledge stability`, act: () => { game.adjustMetric(game.realm, 'legitimacy', 10, 0, 100); updateUI(); } }
+            ]
+        });
     }
 }
 

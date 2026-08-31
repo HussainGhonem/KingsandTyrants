@@ -223,6 +223,9 @@ function processMortalityAndConsequences() {
         // Check death condition
         if (c.health <= 0 || (c.age >= 80 && Math.random() < 0.15)) {
             c.status = "Deceased";
+            const wasPlayerOrRuler = c.isPlayer || c.id === game.realm?.rulerId || c.id === game.dynasty?.headId;
+            c.isPlayer = false;
+
             log(`DEATH: ${c.name} (${c.role}, Age ${c.age}) has passed away.`);
             game.generationalTimeline.unshift({
                 year: game.date.getFullYear(),
@@ -238,9 +241,9 @@ function processMortalityAndConsequences() {
             }
 
             // Consequence Propagation
-            if (c.isPlayer) {
+            if (wasPlayerOrRuler) {
                 evaluateSuccessionContest(c);
-            } else if (c.role.includes("Minister")) {
+            } else if (c.role && c.role.includes("Minister")) {
                 game.realm.stability = Math.max(0, game.realm.stability - 5);
                 log(`CONSEQUENCE: Death of ${c.name} caused cabinet instability.`);
             }
@@ -349,10 +352,11 @@ function triggerRepublicElection(deadRuler) {
 }
 
 function evaluateSuccessionContest(deadRuler) {
+    if (!deadRuler) return;
     deadRuler.isPlayer = false;
 
     const isRepublicLeader = /President|Prime Minister|Executive/i.test(deadRuler.role || '') ||
-        ["Revolutionary Republic", "Constitutional Transitional Government", "President of the Republic", "Interim National Council"].includes(game.constitution.headOfState);
+        ["Revolutionary Republic", "Constitutional Transitional Government", "President of the Republic", "Interim National Council"].includes(game.constitution?.headOfState);
 
     if (isRepublicLeader) {
         triggerRepublicElection(deadRuler);
@@ -368,31 +372,41 @@ function evaluateSuccessionContest(deadRuler) {
     const legacyEntry = {
         name: deadRuler.name,
         title: titleStr,
-        reignEndYear: game.date.getFullYear(),
+        reignEndYear: game.date instanceof Date ? game.date.getFullYear() : 2026,
         gdp: game.realm.gdp,
         approval: game.realm.approval,
         prestige: game.realm.prestige,
         bio: `${deadRuler.name} ruled during a crucial era of state development, leaving behind a legacy marked as '${titleStr}'. HISTORY JUDGES YOU.`
     };
+    if (!game.legacy) game.legacy = [];
     game.legacy.unshift(legacyEntry);
-    game.dynastyReputation.totalReigns += 1;
+    if (!game.dynastyReputation) game.dynastyReputation = { totalReigns: 0 };
+    game.dynastyReputation.totalReigns = (game.dynastyReputation.totalReigns || 0) + 1;
 
-    let successor = game.characters.find(c => c.id === game.dynasty.heirId && c.status === "Active");
+    let successor = game.characters.find(c => c.id === game.dynasty?.heirId && (c.status === "Active" || c.status === "Alive"));
     if (!successor) {
-        successor = game.characters.filter(c => c.type === "family" && c.status === "Active").sort((a,b) => b.claimStrength - a.claimStrength)[0];
+        successor = game.characters.filter(c => c.type === "family" && (c.status === "Active" || c.status === "Alive")).sort((a,b) => (b.claimStrength || 0) - (a.claimStrength || 0))[0];
     }
 
     if (successor) {
+        // Ensure strictly one active character is assigned as player
+        game.characters.forEach(c => { c.isPlayer = (c.id === successor.id); });
+
         successor.isPlayer = true;
         successor.role = "Grand Duke (You)";
-        game.dynasty.headId = successor.id;
+        if (game.dynasty) game.dynasty.headId = successor.id;
+        if (game.realm) game.realm.rulerId = successor.id;
         
-        const newHeir = game.characters.find(c => c.type === "family" && c.id !== successor.id && c.status === "Active");
-        if (newHeir) game.dynasty.heirId = newHeir.id;
+        const newHeir = game.characters.find(c => c.type === "family" && c.id !== successor.id && (c.status === "Active" || c.status === "Alive"));
+        if (newHeir) {
+            if (game.dynasty) game.dynasty.heirId = newHeir.id;
+            if (game.realm) game.realm.heirId = newHeir.id;
+            newHeir.role = "Crown Prince (Heir)";
+        }
 
         // Determine Succession Outcome
-        const milSupport = game.military.readiness;
-        const oppSupport = game.politics.opposition;
+        const milSupport = game.military?.readiness || 50;
+        const oppSupport = game.politics?.opposition || 30;
         let contestOutcome = "Peaceful Coronation";
         let descStr = `${deadRuler.name} has passed away. Crown Prince ${successor.name} ascended the throne with full court support.`;
 
@@ -414,6 +428,7 @@ function evaluateSuccessionContest(deadRuler) {
         });
     } else {
         log("CRITICAL DYNASTIC CRISIS: House Vance has no eligible heirs!");
+        evaluateDynastyExtinction();
     }
 }
 
@@ -536,8 +551,8 @@ function simulateMacroEconomyAndCorporations() {
             title: "SOVEREIGN TREASURY BANKRUPTCY WARNING",
             desc: "State reserves have fallen into deficit (< $0B). Sovereign credit rating has been downgraded. Issue sovereign bonds or cut public spending immediately!",
             choices: [
-                { text: "📜 Emergency Issue $5B Sovereign Bonds", act: () => { issueSovereignBonds(5.0); } },
-                { text: "📈 Enforce Emergency Tax Levies (+Tax Rate, -10 Approval)", act: () => { adjustTax(1); } }
+            { text: "📜 Emergency Issue $5B Sovereign Bonds", act: () => { if (typeof issueSovereignBonds === 'function') issueSovereignBonds(5.0); else game.realm.treasury += 5.0; } },
+            { text: "📈 Enforce Emergency Tax Levies (+Tax Rate, -10 Approval)", act: () => { if (typeof adjustTax === 'function') adjustTax(1); else { game.realm.taxRate = (game.realm.taxRate || 1.0) + 0.2; game.realm.approval = Math.max(0, game.realm.approval - 10); } } }
             ]
         });
         game.usedEvents.add("treasury_deficit_warning");

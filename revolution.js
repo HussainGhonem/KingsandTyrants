@@ -194,6 +194,8 @@ function triggerRevolution100Crisis() {
             consequenceText: "✓ -30 Fervor | ⚠ -15 Legitimacy",
             act: () => {
                 if (game.revolution) game.revolution.fervor = 70;
+                if (game.regime) game.regime.revolutionaryPressure = 70;
+                if (typeof game.revolutionaryFervor !== 'undefined') game.revolutionaryFervor = 70;
                 game.realm.legitimacy = Math.max(0, game.realm.legitimacy - 15);
                 game.realm.approval = Math.min(100, game.realm.approval + 10);
                 if (typeof log === 'function') log(`🏛️ Sovereign opened emergency negotiations with the Revolutionary Council.`);
@@ -204,8 +206,11 @@ function triggerRevolution100Crisis() {
             consequenceText: "✓ +20 Order | ⚠ +10 Coup Risk, -20 Approval",
             act: () => {
                 game.realm.stability = Math.min(100, game.realm.stability + 20);
-                game.politics.coupRisk = Math.min(100, (game.politics.coupRisk || 0) + 10);
+                if (game.politics) game.politics.coupRisk = Math.min(100, (game.politics.coupRisk || 0) + 10);
                 game.realm.approval = Math.max(0, game.realm.approval - 20);
+                if (game.revolution) game.revolution.fervor = 80;
+                if (game.regime) game.regime.revolutionaryPressure = 80;
+                if (typeof game.revolutionaryFervor !== 'undefined') game.revolutionaryFervor = 80;
                 if (typeof log === 'function') log(`🎖️ Sovereign declared Martial Law across the Capital Citadel.`);
             }
         },
@@ -214,7 +219,9 @@ function triggerRevolution100Crisis() {
             consequenceText: "✓ -40 Fervor | ⚠ -25 Parliamentary Support",
             act: () => {
                 if (game.revolution) game.revolution.fervor = 60;
-                game.politics.parliamentSupport = Math.max(0, game.politics.parliamentSupport - 25);
+                if (game.regime) game.regime.revolutionaryPressure = 60;
+                if (typeof game.revolutionaryFervor !== 'undefined') game.revolutionaryFervor = 60;
+                if (game.politics) game.politics.parliamentSupport = Math.max(0, game.politics.parliamentSupport - 25);
                 game.realm.approval = Math.min(100, game.realm.approval + 15);
                 if (typeof log === 'function') log(`📜 Emergency constitutional reforms decreed to quell rising insurrection.`);
             }

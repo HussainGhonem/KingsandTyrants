@@ -30,8 +30,8 @@ function updateUI() {
         });
     }
 
-    const ruler = game.characters.find(x => x.isPlayer) || game.characters[0];
-    if (ruler) setSafeText('ruler-title-name', `${ruler.role.includes("Grand Duke") ? "" : "Grand Duke "}${ruler.name}`);
+    const ruler = (typeof getRulerCharacter === 'function' ? getRulerCharacter() : game.characters.find(x => x.isPlayer && (x.status === "Active" || x.status === "Alive"))) || game.characters.find(c => c.status === "Active" || c.status === "Alive");
+    if (ruler) setSafeText('ruler-title-name', `${ruler.role && ruler.role.includes("Grand Duke") ? "" : "Grand Duke "}${ruler.name}`);
 
     setSafeText('stat-treasury', `$${(game.realm?.treasury ?? 10).toFixed(2)}B`);
     setSafeText('stat-gdp', `$${(game.realm?.gdp ?? 80).toFixed(1)}B`);
@@ -284,7 +284,7 @@ function renderDynastyTreeVisualizer() {
     const container = document.getElementById('dynasty-tree-visualizer');
     if (!container) return;
 
-    const ruler = game.characters.find(c => c.isPlayer) || game.characters[0];
+    const ruler = (typeof getRulerCharacter === 'function' ? getRulerCharacter() : game.characters.find(x => x.isPlayer && (x.status === "Active" || x.status === "Alive"))) || game.characters.find(c => c.status === "Active" || c.status === "Alive");
     if (!ruler) return;
 
     let treeHtml = `<div><strong>👑 ${ruler.name.toUpperCase()}</strong> (${ruler.role}, Age ${ruler.age}) • <span style="color:var(--accent-gold)">${game.getLifeStage(ruler.age)}</span></div>`;

@@ -24,6 +24,8 @@ game.config = {
 
 // Macro Realm Metrics
 game.realm = {
+    rulerId: 1,
+    heirId: 2,
     treasury: 5.0,
     gdp: 82.4,
     approval: 48,
