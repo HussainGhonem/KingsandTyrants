@@ -170,14 +170,18 @@ function renderConstitutionEditor() {
         <div class="dash-card">
             <h4 style="color:white;">Head of State Power</h4>
             <p style="font-size:0.75rem; color:var(--accent-gold); margin:4px 0;">Current: ${consti.headOfState}</p>
-            <small>Stronger executive: +stability, +authoritarianism, -parliamentary support.</small>
-            <button class="action-btn" onclick="amendConstitution('headOfState', 'Monarchic Supreme Executive')">Crown Executive</button>
+            <small>Choose between executive control, compromise, or parliamentary legitimacy.</small>
+            <button class="action-btn" onclick="amendConstitution('headOfState', 'Monarchic Supreme Executive')">Crown Executive (+stability, +control)</button>
+            <button class="action-btn" onclick="amendConstitution('headOfState', 'Constitutional Crown')">Constitutional Crown (+approval, +parliament)</button>
+            <button class="action-btn" onclick="amendConstitution('headOfState', 'Ceremonial Monarch')">Ceremonial Monarch (+legitimacy, -control)</button>
         </div>
         <div class="dash-card">
             <h4 style="color:white;">Judicial Independence</h4>
             <p style="font-size:0.75rem; color:var(--accent-gold); margin:4px 0;">Current: ${consti.judiciaryIndependence}</p>
-            <small>Independent courts: +legitimacy, -authoritarianism, -opposition.</small>
-            <button class="action-btn" onclick="amendConstitution('judiciaryIndependence', 'Independent Supreme Bench')">Empower Judiciary</button>
+            <small>Courts can serve the Crown, balance power, or become fully independent.</small>
+            <button class="action-btn" onclick="amendConstitution('judiciaryIndependence', 'Royal Courts')">Royal Courts (+stability, +control)</button>
+            <button class="action-btn" onclick="amendConstitution('judiciaryIndependence', 'Medium Independent Bench')">Balanced Courts (+legitimacy)</button>
+            <button class="action-btn" onclick="amendConstitution('judiciaryIndependence', 'Independent Supreme Bench')">Empower Judiciary (+legitimacy, -control)</button>
         </div>
         <div class="dash-card">
             <h4 style="color:white;">Emergency Powers Status</h4>

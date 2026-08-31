@@ -97,16 +97,29 @@ function issueSovereignBonds(amount) {
 function amendConstitution(article, value) {
     game.constitution[article] = value;
     if (article === 'headOfState') {
-        game.politics.authoritarianism = Math.min(100, (game.politics.authoritarianism || 0) + 8);
-        game.realm.stability = Math.min(100, (game.realm.stability || 0) + 3);
-        game.politics.parliamentSupport = Math.max(0, (game.politics.parliamentSupport || 0) - 4);
+        const effects = {
+            'Monarchic Supreme Executive': [3, 0, -4, 8, 0],
+            'Constitutional Crown': [1, 3, 2, 2, -2],
+            'Ceremonial Monarch': [-1, 6, 5, -6, -4]
+        }[value] || [0, 0, 0, 0, 0];
+        game.realm.stability = Math.max(0, Math.min(100, (game.realm.stability || 0) + effects[0]));
+        game.realm.legitimacy = Math.max(0, Math.min(100, (game.realm.legitimacy || 0) + effects[1]));
+        game.realm.approval = Math.max(0, Math.min(100, (game.realm.approval || 0) + effects[2]));
+        game.politics.authoritarianism = Math.max(0, Math.min(100, (game.politics.authoritarianism || 0) + effects[3]));
+        game.politics.parliamentSupport = Math.max(0, Math.min(100, (game.politics.parliamentSupport || 0) + effects[4]));
     } else if (article === 'judiciaryIndependence') {
-        game.realm.legitimacy = Math.min(100, (game.realm.legitimacy || 0) + 8);
-        game.politics.authoritarianism = Math.max(0, (game.politics.authoritarianism || 0) - 8);
-        game.politics.opposition = Math.max(0, (game.politics.opposition || 0) - 3);
-        game.constitution.judicialOversight = true;
+        const effects = {
+            'Royal Courts': [2, -5, 3, 7, 4],
+            'Medium Independent Bench': [0, 2, 1, 0, 0],
+            'Independent Supreme Bench': [-1, 8, 0, -8, -4]
+        }[value] || [0, 0, 0, 0, 0];
+        game.realm.stability = Math.max(0, Math.min(100, (game.realm.stability || 0) + effects[0]));
+        game.realm.legitimacy = Math.max(0, Math.min(100, (game.realm.legitimacy || 0) + effects[1]));
+        game.realm.approval = Math.max(0, Math.min(100, (game.realm.approval || 0) + effects[2]));
+        game.politics.authoritarianism = Math.max(0, Math.min(100, (game.politics.authoritarianism || 0) + effects[3]));
+        game.politics.opposition = Math.max(0, Math.min(100, (game.politics.opposition || 0) + effects[4]));
+        game.constitution.judicialOversight = value === 'Independent Supreme Bench';
     }
-    game.adjustLegitimacy(5);
     log(`AMENDED CONSTITUTION: ${article} updated to "${value}".`);
     updateUI();
 }
