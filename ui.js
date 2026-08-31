@@ -32,6 +32,7 @@ function updateUI() {
 
     const ruler = (typeof getRulerCharacter === 'function' ? getRulerCharacter() : game.characters.find(x => x.isPlayer && (x.status === "Active" || x.status === "Alive"))) || game.characters.find(c => c.status === "Active" || c.status === "Alive");
     if (ruler) setSafeText('ruler-title-name', `${ruler.role && ruler.role.includes("Grand Duke") ? "" : "Grand Duke "}${ruler.name}`);
+    setSafeText('dynasty-name', `${game.dynasty?.name || 'House Vance'} of ${game.realm?.name || 'Vancuria'} • ${game.realm?.government || 'Constitutional Monarchy'} • ${game.realm?.difficulty || 'Normal'}`);
 
     setSafeText('stat-treasury', `$${(game.realm?.treasury ?? 10).toFixed(2)}B`);
     setSafeText('stat-gdp', `$${(game.realm?.gdp ?? 80).toFixed(1)}B`);

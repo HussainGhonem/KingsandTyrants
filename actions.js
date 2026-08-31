@@ -1376,6 +1376,8 @@ function startNewGameConfigured(config = {}) {
     game.realm.capital = capitalName;
     game.realm.government = government;
     game.realm.difficulty = difficulty;
+    game.realm.scenario = scenario;
+    if (game.constitution) game.constitution.headOfState = government;
 
     if (game.dynasty) {
         game.dynasty.name = dynastyName;
@@ -1406,6 +1408,10 @@ function startNewGameConfigured(config = {}) {
         game.military.coupRisk = mod.coupRisk;
         game.military.officerConspiracy = Math.min(100, mod.coupRisk + 30);
     }
+    game.difficultyRules = {
+        eventChance: difficulty === "Story" ? 0.18 : difficulty === "Hard" ? 0.38 : difficulty === "Brutal" ? 0.5 : 0.3,
+        economicPressure: difficulty === "Story" ? 0.75 : difficulty === "Brutal" ? 1.35 : difficulty === "Hard" ? 1.15 : 1
+    };
 
     // Reset intelligence
     game.intelligenceSystem = {

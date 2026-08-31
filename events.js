@@ -3684,7 +3684,7 @@ function processEventsMonthly() {
 
     if (
         !game.activeEvent &&
-        Math.random() < 0.30
+        Math.random() < (game.difficultyRules?.eventChance ?? 0.30)
     ) {
 
         triggerRandomEvent();
