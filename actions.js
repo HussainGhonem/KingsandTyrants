@@ -1429,7 +1429,7 @@ function confirmStartNewGame() {
     const difficulty = document.getElementById('ng-difficulty')?.value || "Normal";
     const scenario = document.getElementById('ng-scenario')?.value || "crisis";
 
-    startNewGameConfigured({
+    const newGameConfig = {
         rulerName,
         dynastyName,
         realmName,
@@ -1437,10 +1437,13 @@ function confirmStartNewGame() {
         government,
         difficulty,
         scenario
-    });
+    };
 
-    closeNewGameModal();
-    hideTitleScreen();
+    // Rebuild from the default registry so no old campaign state leaks into a scenario.
+    sessionStorage.setItem('pending_new_game', JSON.stringify(newGameConfig));
+    localStorage.removeItem('vancuria_save');
+    localStorage.removeItem('dynasty_state_autosave');
+    location.reload();
 }
 
 function acceptMarriageProposal(proposalId) {

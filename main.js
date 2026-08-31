@@ -9,6 +9,17 @@ if (typeof initPortraitSystem === 'function') {
 }
 
 // Initialize UI display and title screen
+const pendingNewGame = sessionStorage.getItem('pending_new_game');
+if (pendingNewGame) {
+    try {
+        startNewGameConfigured(JSON.parse(pendingNewGame));
+        sessionStorage.removeItem('pending_new_game');
+    } catch (error) {
+        console.error('Failed to initialize selected scenario:', error);
+        sessionStorage.removeItem('pending_new_game');
+    }
+}
+
 updateUI();
 
 const dateDisplay = document.getElementById('date-display');
