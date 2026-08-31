@@ -2949,6 +2949,16 @@ function triggerRandomEvent() {
 // EVENT MODAL
 // ============================================================
 
+function isEventEligible(ev) {
+    if (!ev) return false;
+    const currentYear = game.date instanceof Date ? game.date.getFullYear() : 2034;
+    if (ev.minYear && currentYear < ev.minYear) return false;
+    if (ev.maxYear && currentYear > ev.maxYear) return false;
+    if (typeof ev.conditions === 'function' && !ev.conditions()) return false;
+    if (ev.once && game.usedEvents?.has(ev.id)) return false;
+    return true;
+}
+
 function triggerEventModal(ev) {
 
     if (!ev) return;
@@ -2959,15 +2969,15 @@ function triggerEventModal(ev) {
 
     game.activeEvent = ev;
 
-    const titleEl =
-        document.getElementById(
-            "event-modal-title"
-        );
+    const catEl = document.getElementById("event-modal-category");
+    const titleEl = document.getElementById("event-modal-title");
+    const descEl = document.getElementById("event-modal-desc");
+    const ctxEl = document.getElementById("event-modal-context");
 
-    const descEl =
-        document.getElementById(
-            "event-modal-desc"
-        );
+    if (catEl) {
+        catEl.innerText = (ev.category || "STATE DISPATCH").toUpperCase();
+        catEl.style.color = ev.severity === "Critical" ? "var(--danger)" : "var(--accent-gold)";
+    }
 
     if (titleEl) {
         titleEl.innerText = ev.title;
@@ -2977,33 +2987,24 @@ function triggerEventModal(ev) {
         descEl.innerText = ev.desc;
     }
 
-    const choicesBox =
-        document.getElementById(
-            "event-modal-choices"
-        );
-
-    if (choicesBox) {
-
-        choicesBox.innerHTML =
-            ev.choices
-                .map(
-                    (choice, idx) => `
-                        <button
-                            class="choice-btn action-btn primary"
-                            onclick="resolveEventChoice(${idx})"
-                        >
-                            👉 ${choice.text}
-                        </button>
-                    `
-                )
-                .join("");
+    if (ctxEl) {
+        ctxEl.innerText = ev.severity ? `Event Severity: ${ev.severity.toUpperCase()}` : "";
     }
 
-    const modal =
-        document.getElementById(
-            "event-modal"
-        );
+    const choicesBox = document.getElementById("event-modal-choices");
 
+    if (choicesBox) {
+        choicesBox.innerHTML = ev.choices.map((choice, idx) => `
+            <div style="margin-bottom:8px;">
+                <button class="choice-btn action-btn primary" style="width:100%; text-align:left; padding:10px 14px;" onclick="resolveEventChoice(${idx})">
+                    👉 ${choice.text}
+                </button>
+                ${choice.consequenceText ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px; margin-left:6px;">${choice.consequenceText}</div>` : ''}
+            </div>
+        `).join("");
+    }
+
+    const modal = document.getElementById("event-modal");
     if (modal) {
         modal.style.display = "flex";
     }
@@ -3027,6 +3028,22 @@ function resolveEventChoice(idx) {
         try {
 
             event.choices[idx].act();
+
+            // Log resolved event into historical chronicle
+            if (!game.history) game.history = { timeline: [], legacyPoints: 0, events: [] };
+            if (!game.history.events) game.history.events = [];
+            game.history.events.push({
+                id: event.id,
+                date: new Date(game.date),
+                title: event.title,
+                choiceText: event.choices[idx].text,
+                category: event.category || "Political"
+            });
+
+            // Auto-generate newspaper reaction story
+            if (typeof publishEventNewspaperStory === 'function') {
+                publishEventNewspaperStory(event, event.choices[idx]);
+            }
 
         } catch (error) {
 
@@ -3056,6 +3073,17 @@ function resolveEventChoice(idx) {
 
     if (typeof updateUI === "function") {
         updateUI();
+    }
+}
+
+function publishEventNewspaperStory(event, choice) {
+    if (!game.media) return;
+    const headline = `${event.title.toUpperCase()}: SOVEREIGN DECREE ISSUED`;
+    const story = `The Crown has resolved ${event.title}. Official statement: "${choice.text}".`;
+
+    if (game.media.stateOutlet) {
+        game.media.stateOutlet.headline = headline;
+        game.media.stateOutlet.leadStory = story;
     }
 }
 

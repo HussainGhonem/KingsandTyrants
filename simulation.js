@@ -23,6 +23,7 @@ function simulateMonth() {
     simulateMilitaryAndGenerals();
     simulateDiplomacyAndForeignPowers();
     simulateRevolution();          // ← Revolutionary State Machine
+    simulateIntelligenceCases();   // Dynamic Intel Case Pipeline
     runNarrativeAIDirector();
 
     // Advance Calendar safely
@@ -246,7 +247,35 @@ function processMortalityAndConsequences() {
         }
     });
 
+    // Refill vital cabinet positions if deceased
+    ensureGovernmentContinuity();
+
     evaluateDynastyExtinction();
+}
+
+function ensureGovernmentContinuity() {
+    // Ensure key cabinet roles are never vacant long-term
+    const activeCabinet = game.characters.filter(c => c.type === "cabinet" && c.status === "Active");
+    if (activeCabinet.length < 4) {
+        const firstNames = ["Marcus", "Helena", "Victor", "Seraphina", "Dorian", "Valerie"];
+        const lastNames = ["Vane", "Stirling", "Blackwood", "Kovacs", "Thorne", "Mercer"];
+        const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+
+        const newMinister = game.generateCharacter({
+            name: `${fn} ${ln}`,
+            gender: Math.random() < 0.5 ? "Male" : "Female",
+            age: Math.floor(35 + Math.random() * 25),
+            role: "State Minister",
+            type: "cabinet",
+            houseId: null,
+            opinion: 60,
+            traits: ["Calculating", "Diplomat"],
+            health: 90
+        });
+
+        if (typeof log === 'function') log(`🏛️ ${newMinister.name} was appointed to fill a vacant State Ministry.`);
+    }
 }
 
 function evaluateDynastyExtinction() {
@@ -687,6 +716,54 @@ function simulateDiplomacyAndForeignPowers() {
 }
 
 // 7. NARRATIVE AI DIRECTOR
+function simulateIntelligenceCases() {
+    if (!game.intelligenceSystem) return;
+    if (!game.intelligenceSystem.rumors) game.intelligenceSystem.rumors = [];
+    if (!game.intelligenceSystem.cases) game.intelligenceSystem.cases = [];
+
+    // Calculate dynamic intelligence case generation chance based on fervor, approval, and faction hostility
+    const fervor = game.revolution?.fervor || 0;
+    const approval = game.realm?.approval || 50;
+    const baseChance = 0.05 + (fervor / 200) + ((100 - approval) / 300);
+
+    if (Math.random() < baseChance && game.intelligenceSystem.rumors.length < 5) {
+        // Pick dynamic target character with secrets or high ambition
+        const potentialTargets = game.characters.filter(c => c.status === 'Active' && c.id !== getHeadId());
+        if (potentialTargets.length > 0) {
+            const target = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+            const rumorTemplates = [
+                `Held off-the-record meetings with regional garrison commandants.`,
+                `Diverted southern tariff revenue into offshore accounts.`,
+                `Held secret midnight consultations with opposition party whips.`,
+                `Reported to be in private correspondence with foreign ambassadors.`,
+                `Financed illegal student political committees in the capital.`
+            ];
+            const chosenText = `${target.name} ${rumorTemplates[Math.floor(Math.random() * rumorTemplates.length)]}`;
+            
+            // Check if rumor already exists
+            const exists = game.intelligenceSystem.rumors.some(r => r.sourceId === target.id);
+            if (!exists) {
+                const newRumor = {
+                    id: Date.now() + Math.floor(Math.random() * 1000),
+                    text: chosenText,
+                    sourceId: target.id,
+                    confidence: Math.floor(50 + Math.random() * 40),
+                    verified: false,
+                    risk: Math.random() > 0.5 ? "High" : "Medium",
+                    createdAt: new Date(game.date)
+                };
+                game.intelligenceSystem.rumors.push(newRumor);
+                if (typeof log === 'function') log(`🕵️ Counterintelligence flagged a new court rumor regarding ${target.name}.`);
+            }
+        }
+    }
+
+    // Auto-autosave check every 6 months
+    if (game.totalMonthsPassed && game.totalMonthsPassed % 6 === 0) {
+        if (typeof saveGameToAutosave === 'function') saveGameToAutosave();
+    }
+}
+
 function runNarrativeAIDirector() {
     const ai = game.aiDirector;
 

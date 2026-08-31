@@ -7,6 +7,25 @@
     <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+    <!-- TITLE SCREEN OVERLAY -->
+    <div id="title-screen" class="title-screen">
+        <div class="title-background-ambient"></div>
+        <div class="title-content">
+            <div class="title-emblem">👑</div>
+            <h1 class="title-main">DYNASTY <span class="title-amp">&</span> STATE</h1>
+            <p class="title-subtitle">A GENERATIONAL STATE SIMULATOR</p>
+            <div class="title-divider"></div>
+            <div class="title-menu-buttons">
+                <button class="title-btn primary" onclick="showNewGameModal()">NEW GAME</button>
+                <button class="title-btn" onclick="showLoadGameModal()">LOAD GAME</button>
+                <button class="title-btn" id="btn-continue-game" onclick="continueSavedGame()">CONTINUE</button>
+                <button class="title-btn" onclick="showSettingsModal()">SETTINGS</button>
+                <button class="title-btn" onclick="showCreditsModal()">CREDITS</button>
+            </div>
+            <div id="continue-preview-card" class="continue-preview-card" style="display:none;"></div>
+        </div>
+    </div>
+
     <!-- HEADER -->
     <header>
         <div class="dynasty-badge" onclick="switchMainView('dynasty')">
@@ -351,20 +370,150 @@
 
     <div class="event-modal" id="event-modal">
         <div class="event-box">
+            <div class="event-category" id="event-modal-category">POLITICAL CRISIS</div>
             <div class="event-title" id="event-modal-title"></div>
             <div class="event-desc" id="event-modal-desc"></div>
+            <div id="event-modal-context" style="margin-bottom:12px; font-size:0.8rem; color:var(--text-muted);"></div>
             <div class="event-choices" id="event-modal-choices"></div>
+        </div>
+    </div>
+
+    <!-- NEW GAME MODAL -->
+    <div class="modal" id="new-game-modal">
+        <div class="modal-content new-game-modal-content">
+            <h2 style="color:var(--accent-gold); margin-bottom:12px; font-family:serif;">ESTABLISH A NEW DYNASTY & STATE</h2>
+            <div class="new-game-form-grid">
+                <div class="form-group">
+                    <label>Ruler Title & Name</label>
+                    <input type="text" id="ng-ruler-name" value="Grand Duke Victor Vance" />
+                </div>
+                <div class="form-group">
+                    <label>Dynasty / Royal House</label>
+                    <input type="text" id="ng-dynasty-name" value="House Vance" />
+                </div>
+                <div class="form-group">
+                    <label>Realm / Nation Name</label>
+                    <input type="text" id="ng-realm-name" value="Vancuria" />
+                </div>
+                <div class="form-group">
+                    <label>Capital City</label>
+                    <input type="text" id="ng-capital-name" value="Capital Citadel" />
+                </div>
+                <div class="form-group">
+                    <label>Government System</label>
+                    <select id="ng-government">
+                        <option value="Constitutional Monarchy" selected>Constitutional Monarchy</option>
+                        <option value="Absolute Monarchy">Absolute Monarchy</option>
+                        <option value="Presidential Republic">Presidential Republic</option>
+                        <option value="Parliamentary Republic">Parliamentary Republic</option>
+                        <option value="Military Junta">Military Junta</option>
+                        <option value="Technocracy">Technocracy</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Difficulty</label>
+                    <select id="ng-difficulty">
+                        <option value="Story">Story</option>
+                        <option value="Normal" selected>Normal</option>
+                        <option value="Hard">Hard</option>
+                        <option value="Brutal">Brutal</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label>Historical Scenario</label>
+                    <select id="ng-scenario">
+                        <option value="crisis" selected>2034 — The Vancuria Crisis (Balanced Tension & Debt)</option>
+                        <option value="stable">2034 — Stable Realm (High Approval, Low Fervor)</option>
+                        <option value="revolution">2034 — Revolutionary Era (75% Fervor, High Coup Risk)</option>
+                        <option value="military">2034 — Military Tension (High Faction Suspicion)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="action-btn" onclick="closeNewGameModal()">Cancel</button>
+                <button class="action-btn primary" onclick="confirmStartNewGame()">BEGIN REIGN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOAD GAME MODAL -->
+    <div class="modal" id="load-game-modal">
+        <div class="modal-content">
+            <h2 style="color:var(--accent-gold); margin-bottom:12px;">LOAD SOVEREIGN SAVE FILE</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Select an exported Dynasty & State <code>.json</code> save file from your device.</p>
+            <input type="file" id="save-file-input" accept=".json" onchange="handleSaveFileSelect(event)" style="margin-bottom:14px; width:100%; color:var(--text-main);" />
+            <div id="load-error-message" style="color:var(--danger); font-size:0.8rem; margin-bottom:10px; display:none;"></div>
+            <div id="recent-saves-list" style="margin-bottom:14px;"></div>
+            <button style="width:100%; background:#334155; border:none; color:white; padding:8px; border-radius:4px; cursor:pointer;" onclick="closeLoadGameModal()">Back</button>
+        </div>
+    </div>
+
+    <!-- PAUSE MENU MODAL -->
+    <div class="modal" id="pause-menu-modal">
+        <div class="modal-content" style="max-width:360px;">
+            <h2 style="color:var(--accent-gold); text-align:center; margin-bottom:16px;">SOVEREIGN MENU</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button class="action-btn primary" onclick="saveGameToAutosave()">💾 Save Game (Browser Autosave)</button>
+                <button class="action-btn" onclick="exportSaveFile()">📜 Save As File (.json)</button>
+                <button class="action-btn" onclick="showLoadGameModal()">📂 Load Save File</button>
+                <button class="action-btn" onclick="showSettingsModal()">⚙️ Settings & Debug Mode</button>
+                <button class="action-btn" style="border-color:var(--danger); color:var(--danger);" onclick="promptReturnToTitle()">🏛️ Return to Title Screen</button>
+                <button class="action-btn" onclick="closePauseMenu()">▶ Resume Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RETURN TO TITLE CONFIRMATION MODAL -->
+    <div class="modal" id="return-title-modal">
+        <div class="modal-content" style="max-width:380px;">
+            <h3 style="color:var(--warning); margin-bottom:10px;">RETURN TO TITLE SCREEN?</h3>
+            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:14px;">Any unsaved progress since your last manual save or autosave will be lost.</p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="action-btn primary" onclick="saveAndReturnToTitle()">💾 Save & Return</button>
+                <button class="action-btn" style="border-color:var(--danger); color:var(--danger);" onclick="returnToTitleWithoutSaving()">⚠️ Return Without Saving</button>
+                <button class="action-btn" onclick="closeReturnTitleModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS & DEBUG MODAL -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content" style="max-width:540px;">
+            <h2 style="color:var(--accent-gold); margin-bottom:12px;">SYSTEM SETTINGS & DEVELOPER DEBUG</h2>
+            <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:12px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="chk-debug-mode" onchange="toggleDebugMode(this.checked)" />
+                    <span>Enable Developer Debug Console</span>
+                </label>
+                <div id="debug-panel-container" style="display:none; background:#070a12; padding:10px; border-radius:6px; border:1px solid var(--panel-border);"></div>
+            </div>
+            <button style="margin-top:14px; width:100%; background:#334155; border:none; color:white; padding:8px; border-radius:4px; cursor:pointer;" onclick="closeSettingsModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- CREDITS MODAL -->
+    <div class="modal" id="credits-modal">
+        <div class="modal-content" style="max-width:440px; text-align:center;">
+            <h2 style="color:var(--accent-gold); margin-bottom:8px; font-family:serif;">DYNASTY & STATE</h2>
+            <p style="font-size:0.8rem; color:var(--accent-blue); margin-bottom:12px;">A Generational State Simulator</p>
+            <div style="font-size:0.8rem; color:var(--text-muted); line-height:1.6; margin-bottom:14px;">
+                Designed as a living political & dynastic historical simulator.<br/>
+                Built with HTML5, CSS3, Vanilla JavaScript, and Playwright verification architecture.
+            </div>
+            <button style="width:100%; background:#334155; border:none; color:white; padding:8px; border-radius:4px; cursor:pointer;" onclick="closeCreditsModal()">Close</button>
         </div>
     </div>
 
     <!-- SCRIPTS -->
     <script src="gameState.js"></script>
+    <script src="saveSystem.js"></script>
     <script src="revolution.js"></script>
     <script src="simulation.js"></script>
     <script src="events.js?v=20260831"></script>
     <script src="ui.js"></script>
     <script src="portraitSystem.js"></script>
     <script src="actions.js"></script>
+    <script src="debug.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

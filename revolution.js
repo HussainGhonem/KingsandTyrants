@@ -169,8 +169,68 @@ function tickRevolutionStats() {
         if (prov) prov.unrest = Math.min(100, prov.unrest + rInt(0, 2));
     });
 
+    // Process Revolutionary Fervor Tiers (0-100%)
+    const fervor = game.revolution?.fervor || 0;
+    if (fervor >= 100 && !game.activeEvent) {
+        // Trigger 100% Crisis Event
+        triggerRevolution100Crisis();
+    } else if (fervor >= 75) {
+        // Spawn revolutionary defector/leader if none exist
+        if (r.leaders.length < 3 && Math.random() < 0.25) {
+            const newLeader = spawnRevolutionaryLeader("Revolutionary Commander", rChoice(["Republican", "Socialist", "Radical"]));
+            if (newLeader && typeof log === 'function') log(`🚩 Armed revolutionary leader ${newLeader.name} joined the underground movement.`);
+        }
+    }
+
     // Cooldown countdown
     if (r.cooldown > 0) r.cooldown--;
+}
+
+function triggerRevolution100Crisis() {
+    if (game.activeEvent) return;
+    const choices = [
+        {
+            text: "💬 Open Immediate Negotiations with the Revolutionary Council",
+            consequenceText: "✓ -30 Fervor | ⚠ -15 Legitimacy",
+            act: () => {
+                if (game.revolution) game.revolution.fervor = 70;
+                game.realm.legitimacy = Math.max(0, game.realm.legitimacy - 15);
+                game.realm.approval = Math.min(100, game.realm.approval + 10);
+                if (typeof log === 'function') log(`🏛️ Sovereign opened emergency negotiations with the Revolutionary Council.`);
+            }
+        },
+        {
+            text: "🛡️ Mobilize Royal Guard & Declare Martial Law",
+            consequenceText: "✓ +20 Order | ⚠ +10 Coup Risk, -20 Approval",
+            act: () => {
+                game.realm.stability = Math.min(100, game.realm.stability + 20);
+                game.politics.coupRisk = Math.min(100, (game.politics.coupRisk || 0) + 10);
+                game.realm.approval = Math.max(0, game.realm.approval - 20);
+                if (typeof log === 'function') log(`🎖️ Sovereign declared Martial Law across the Capital Citadel.`);
+            }
+        },
+        {
+            text: "📜 Grant Emergency Constitutional Reforms & Dissolve Parliament",
+            consequenceText: "✓ -40 Fervor | ⚠ -25 Parliamentary Support",
+            act: () => {
+                if (game.revolution) game.revolution.fervor = 60;
+                game.politics.parliamentSupport = Math.max(0, game.politics.parliamentSupport - 25);
+                game.realm.approval = Math.min(100, game.realm.approval + 15);
+                if (typeof log === 'function') log(`📜 Emergency constitutional reforms decreed to quell rising insurrection.`);
+            }
+        }
+    ];
+
+    if (typeof triggerEventModal === 'function') {
+        triggerEventModal({
+            id: "rev_crisis_100",
+            category: "REVOLUTIONARY CRISIS",
+            severity: "Critical",
+            title: "THE CAPITAL RISES: REVOLUTION AT THE GATES",
+            desc: "Revolutionary Fervor has reached 100%! Tens of thousands of armed demonstrators, strike committees, and mutinous garrisons surround the Citadel. The throne is on the brink.",
+            choices: choices
+        });
+    }
 }
 
 // ─── STAGE TRANSITION CHECKS ─────────────────────────────────────────────────

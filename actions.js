@@ -1345,24 +1345,83 @@ function loadGame() {
 }
 
 function confirmResetGame() {
-    triggerEventModal({
-        title: "START NEW DYNASTY CAMPAIGN?",
-        desc: "Are you sure you want to reset the realm state and start a new dynasty campaign? All current progress, historical chronicle logs, and saved data will be wiped.",
-        choices: [
-            {
-                text: "⚠️ Confirm Reset & Start New Campaign",
-                act: () => {
-                    game.resetting = true;
-                    localStorage.removeItem('vancuria_save');
-                    location.reload();
-                }
-            },
-            {
-                text: "Cancel & Continue Current Reign",
-                act: () => {}
-            }
-        ]
+    showNewGameModal();
+}
+
+function startNewGameConfigured(config = {}) {
+    const rulerName = config.rulerName || "Grand Duke Victor Vance";
+    const dynastyName = config.dynastyName || "House Vance";
+    const realmName = config.realmName || "Vancuria";
+    const capitalName = config.capitalName || "Capital Citadel";
+    const government = config.government || "Constitutional Monarchy";
+    const difficulty = config.difficulty || "Normal";
+    const scenario = config.scenario || "crisis";
+
+    game.date = new Date(2034, 0, 1);
+    game.totalMonthsPassed = 0;
+    game.usedEvents = new Set();
+    
+    game.realm.name = realmName;
+    game.realm.capital = capitalName;
+    game.realm.government = government;
+    game.realm.difficulty = difficulty;
+
+    if (game.dynasty) {
+        game.dynasty.name = dynastyName;
+    }
+
+    const ruler = typeof getRulerCharacter === 'function' ? getRulerCharacter() : null;
+    if (ruler) {
+        ruler.name = rulerName;
+    }
+
+    // Apply scenario modifier
+    const scenarioMap = {
+        stable: { approval: 70, fervor: 10, treasury: 15, coupRisk: 5 },
+        crisis: { approval: 48, fervor: 35, treasury: 10.45, coupRisk: 15 },
+        revolution: { approval: 32, fervor: 75, treasury: 7.0, coupRisk: 30 },
+        military: { approval: 45, fervor: 25, treasury: 9.0, coupRisk: 40 }
+    };
+    const mod = scenarioMap[scenario] || scenarioMap.crisis;
+    game.realm.approval = mod.approval;
+    game.realm.treasury = mod.treasury;
+    if (game.revolution) game.revolution.fervor = mod.fervor;
+    if (game.politics) game.politics.coupRisk = mod.coupRisk;
+
+    // Reset intelligence
+    game.intelligenceSystem = {
+        agency: "Directorate of National Security",
+        domestic: 72, foreign: 48, cyber: 81, counterIntel: 64,
+        activeWiretaps: new Set(),
+        discoveredSecrets: new Set(),
+        rumors: [], cases: []
+    };
+
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof log === 'function') log(`👑 A new reign begins! ${rulerName} of ${dynastyName} rules ${realmName}.`);
+}
+
+function confirmStartNewGame() {
+    const rulerName = document.getElementById('ng-ruler-name')?.value || "Grand Duke Victor Vance";
+    const dynastyName = document.getElementById('ng-dynasty-name')?.value || "House Vance";
+    const realmName = document.getElementById('ng-realm-name')?.value || "Vancuria";
+    const capitalName = document.getElementById('ng-capital-name')?.value || "Capital Citadel";
+    const government = document.getElementById('ng-government')?.value || "Constitutional Monarchy";
+    const difficulty = document.getElementById('ng-difficulty')?.value || "Normal";
+    const scenario = document.getElementById('ng-scenario')?.value || "crisis";
+
+    startNewGameConfigured({
+        rulerName,
+        dynastyName,
+        realmName,
+        capitalName,
+        government,
+        difficulty,
+        scenario
     });
+
+    closeNewGameModal();
+    hideTitleScreen();
 }
 
 function acceptMarriageProposal(proposalId) {

@@ -2,6 +2,8 @@
 
 const game = {};
 if (typeof window !== 'undefined') window.game = game;
+if (typeof global !== 'undefined') global.game = game;
+if (typeof module !== 'undefined') module.exports = game;
 
 // A fresh campaign always starts from the same simple historical baseline.
 game.date = new Date(2026, 0, 1);
@@ -350,7 +352,7 @@ game.dynasty = {
     ]
 };
 
-// Intelligence System
+// Intelligence System (Clean initial state - no unexplained cases/rumors at start)
 game.intelligenceSystem = {
     agency: "Directorate of National Security",
     domestic: 72,
@@ -359,10 +361,8 @@ game.intelligenceSystem = {
     counterIntel: 64,
     activeWiretaps: new Set(),
     discoveredSecrets: new Set(),
-    rumors: [
-        { id: 1, text: "Crown Prince Alexander held off-the-record meetings with garrison commandants.", sourceId: 2, confidence: 78, verified: false, risk: "Medium" },
-        { id: 2, text: "Julian Vance diverted southern tariff revenue into offshore accounts.", sourceId: 4, confidence: 62, verified: false, risk: "High" }
-    ]
+    rumors: [],
+    cases: []
 };
 
 // Relationships – key: "fromId_toId"
@@ -721,5 +721,35 @@ const initialHistory = [
     `[Apr ${startYr - 5}] Dispatched security forces to secure transit terminals.`,
     `[Jan ${startYr}] Throne initialized. Generational Population Engine Active.`
 ];
+
+/**
+ * Validate current game state integrity.
+ * @returns {Array<string>} Array of error messages, if any.
+ */
+game.validateGameState = function() {
+    const errors = [];
+    if (!this.realm || isNaN(this.realm.gdp)) errors.push("Invalid realm GDP");
+    if (!this.realm || isNaN(this.realm.treasury)) errors.push("Invalid treasury");
+    if (!this.date || !(this.date instanceof Date) || isNaN(this.date.getTime())) errors.push("Invalid date object");
+    const rulerId = this.realm?.rulerId || this.dynasty?.headId || this.characters?.find(c => c.isPlayer)?.id;
+    if (!this.characters || !Array.isArray(this.characters)) {
+        errors.push("Invalid characters array");
+    } else {
+        if (!rulerId) {
+            errors.push("Missing rulerId");
+        } else {
+            const rulerExists = this.characters.some(c => c.id === rulerId && (c.status === "Alive" || c.status === "Active"));
+            if (!rulerExists) errors.push(`Ruler ${rulerId} does not exist or is not alive/active`);
+        }
+        this.characters.forEach((c, index) => {
+            if (!c || typeof c !== "object") {
+                errors.push(`Character at index ${index} is invalid`);
+            } else if (!c.id) {
+                errors.push(`Character at index ${index} missing ID`);
+            }
+        });
+    }
+    return errors;
+};
 
 console.log("gameState.js loaded successfully. Generational Lifecycle & 6 Competing Great Houses initialized.");

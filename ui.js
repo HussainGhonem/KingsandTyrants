@@ -853,6 +853,84 @@ function revActionArrest(charId) {
     updateUI();
 }
 
+/* UI Navigation & Title Screen Modal Functions */
+
+function showTitleScreen() {
+    const ts = document.getElementById('title-screen');
+    if (ts) ts.style.display = 'flex';
+    checkContinuePreview();
+}
+
+function hideTitleScreen() {
+    const ts = document.getElementById('title-screen');
+    if (ts) ts.style.display = 'none';
+}
+
+function showNewGameModal() {
+    const m = document.getElementById('new-game-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closeNewGameModal() {
+    const m = document.getElementById('new-game-modal');
+    if (m) m.style.display = 'none';
+}
+
+function showLoadGameModal() {
+    const m = document.getElementById('load-game-modal');
+    if (m) {
+        m.style.display = 'flex';
+        renderRecentSavesList();
+    }
+}
+
+function closeLoadGameModal() {
+    const m = document.getElementById('load-game-modal');
+    if (m) m.style.display = 'none';
+}
+
+function openPauseMenu() {
+    setSpeed(0);
+    const m = document.getElementById('pause-menu-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closePauseMenu() {
+    const m = document.getElementById('pause-menu-modal');
+    if (m) m.style.display = 'none';
+}
+
+function promptReturnToTitle() {
+    closePauseMenu();
+    const m = document.getElementById('return-title-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closeReturnTitleModal() {
+    const m = document.getElementById('return-title-modal');
+    if (m) m.style.display = 'none';
+}
+
+function showSettingsModal() {
+    const m = document.getElementById('settings-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    const m = document.getElementById('settings-modal');
+    if (m) m.style.display = 'none';
+}
+
+function showCreditsModal() {
+    const m = document.getElementById('credits-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closeCreditsModal() {
+    const m = document.getElementById('credits-modal');
+    if (m) m.style.display = 'none';
+}
+
 function revActionExile(charId) {
     const ldr = game.characters.find(c => c.id === charId);
     if (!ldr || ldr.exiled) return;

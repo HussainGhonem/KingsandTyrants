@@ -8,22 +8,23 @@ if (typeof initPortraitSystem === 'function') {
     });
 }
 
-// Attempt to load saved progress; populate defaults if no save exists
-const hasSave = loadGame();
+// Initialize UI display and title screen
+updateUI();
 
-if (!hasSave) {
-    const logBox = document.getElementById('log');
-    if (logBox) {
-        initialHistory.forEach(entry => { logBox.innerHTML += `<div>${entry}</div>`; });
-    }
+const dateDisplay = document.getElementById('date-display');
+if (dateDisplay && game.date instanceof Date) {
+    dateDisplay.innerText = game.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// Update UI display and date header
-updateUI();
-document.getElementById('date-display').innerText = game.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-
 // Select default province after DOM is ready
-setTimeout(() => selectProvince(game.selectedProvinceId), 100);
+setTimeout(() => {
+    if (typeof selectProvince === 'function' && game.selectedProvinceId) {
+        selectProvince(game.selectedProvinceId);
+    }
+}, 100);
 
-// Start with speed 0 (Paused)
+// Pause time and display Title Screen
 setSpeed(0);
+if (typeof showTitleScreen === 'function') {
+    showTitleScreen();
+}
