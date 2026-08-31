@@ -10,10 +10,12 @@ if (typeof initPortraitSystem === 'function') {
 
 // Initialize UI display and title screen
 const pendingNewGame = sessionStorage.getItem('pending_new_game');
+let startedConfiguredGame = false;
 if (pendingNewGame) {
     try {
         startNewGameConfigured(JSON.parse(pendingNewGame));
         sessionStorage.removeItem('pending_new_game');
+        startedConfiguredGame = true;
     } catch (error) {
         console.error('Failed to initialize selected scenario:', error);
         sessionStorage.removeItem('pending_new_game');
@@ -37,5 +39,9 @@ setTimeout(() => {
 // Pause time and display Title Screen
 setSpeed(0);
 if (typeof showTitleScreen === 'function') {
-    showTitleScreen();
+    if (startedConfiguredGame) {
+        hideTitleScreen();
+    } else {
+        showTitleScreen();
+    }
 }
