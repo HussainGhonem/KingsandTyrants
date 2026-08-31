@@ -1075,32 +1075,16 @@ function openCharModal(id) {
     const actionsEl = document.getElementById('modal-actions');
 
     if (modelScene) {
-        // Try portrait system first (Blender render with canvas fallback)
-        if (typeof portraitSystem !== 'undefined' && portraitSystem) {
-            portraitSystem.getPortraitHTML(c).then(html => {
-                modelScene.innerHTML = html;
-                
-                // If canvas render is being used, draw it
-                const portraitCanvas = modelScene.querySelector('.portrait-canvas');
-                if (portraitCanvas && typeof drawCharacterPortrait === 'function') {
-                    requestAnimationFrame(() => drawCharacterPortrait(portraitCanvas, c));
-                }
-            }).catch(() => {
-                // Fallback if promise fails
-                modelScene.innerHTML = renderCharacterModel(c);
-                const portraitCanvas = modelScene.querySelector('.portrait-canvas');
-                if (portraitCanvas) {
-                    requestAnimationFrame(() => drawCharacterPortrait(portraitCanvas, c));
-                }
-            });
-        } else {
-            // Fallback if portraitSystem not available
-            modelScene.innerHTML = renderCharacterModel(c);
-            const portraitCanvas = modelScene.querySelector('.portrait-canvas');
-            if (portraitCanvas) {
-                requestAnimationFrame(() => drawCharacterPortrait(portraitCanvas, c));
-            }
-        }
+        const gender = String(c.gender || '').toLowerCase();
+        const face = gender === 'female' ? '👩' : gender === 'male' ? '👨' : '🧑';
+        const traits = c.traits?.length ? c.traits.slice(0, 2).join(' • ') : 'No defining traits recorded';
+        modelScene.innerHTML = `
+            <div class="emoji-portrait" role="img" aria-label="${(c.name || 'Character').replace(/"/g, '&quot;')} face">
+                <span class="emoji-portrait-face">${face}</span>
+                <span class="emoji-portrait-name">${c.name || 'Unknown Character'}</span>
+                <small>${traits}</small>
+            </div>
+        `;
     }
 
     const spouse = game.getSpouse(c);
