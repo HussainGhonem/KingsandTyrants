@@ -9,7 +9,8 @@ from pathlib import Path
 # ----------------------------
 # Configuration
 # ----------------------------
-OUTPUT_DIR = Path("//portraits")
+PROJECT_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = PROJECT_DIR / "portraits"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Character templates (modify to match your game characters)
@@ -112,7 +113,8 @@ def render_character(char_data):
     scene.render.resolution_x = 768
     scene.render.resolution_y = 1024
     scene.render.resolution_percentage = 100
-    scene.render.engine = 'BLENDER_EEVEE_NEXT'
+    # Blender 5.2 exposes the Eevee engine as BLENDER_EEVEE.
+    scene.render.engine = 'BLENDER_EEVEE'
     scene.render.image_settings.file_format = 'PNG'
     
     # Materials
