@@ -1396,8 +1396,16 @@ function startNewGameConfigured(config = {}) {
     const mod = scenarioMap[scenario] || scenarioMap.crisis;
     game.realm.approval = mod.approval;
     game.realm.treasury = mod.treasury;
-    if (game.revolution) game.revolution.fervor = mod.fervor;
-    if (game.politics) game.politics.coupRisk = mod.coupRisk;
+    if (game.revolution) {
+        game.revolution.fervor = mod.fervor;
+        game.revolution.active = mod.fervor >= 70;
+        game.revolution.stage = mod.fervor >= 70 ? "agitation" : "dormant";
+    }
+    if (game.regime) game.regime.revolutionaryPressure = mod.fervor;
+    if (game.military) {
+        game.military.coupRisk = mod.coupRisk;
+        game.military.officerConspiracy = Math.min(100, mod.coupRisk + 30);
+    }
 
     // Reset intelligence
     game.intelligenceSystem = {
