@@ -335,6 +335,11 @@ function startBlackProject(id) {
 function investigateRumor(rumorId) {
     const rIndex = game.intelligenceSystem.rumors.findIndex(r => r.id === rumorId);
     if (rIndex === -1) return;
+    const rumor = game.intelligenceSystem.rumors[rIndex];
+    if (rumor.status === "Resolved") {
+        log("This intelligence rumor is closed and can no longer be investigated.");
+        return;
+    }
 
     if (game.realm.treasury < 0.2) {
         log("Insufficient intelligence budget to conduct rumor investigation.");
@@ -342,7 +347,6 @@ function investigateRumor(rumorId) {
     }
 
     game.realm.treasury -= 0.2;
-    const rumor = game.intelligenceSystem.rumors[rIndex];
     const resolution = typeof resolveRumorInvestigation === 'function'
         ? resolveRumorInvestigation(rumor)
         : null;

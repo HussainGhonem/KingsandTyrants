@@ -621,10 +621,11 @@ function renderIntelligenceDashboard() {
 
     const rumorsContainer = document.getElementById('rumors-container');
     if (rumorsContainer) {
-        if (game.intelligenceSystem.rumors.length === 0) {
+        const activeRumors = game.intelligenceSystem.rumors.filter(r => r.status !== 'Resolved');
+        if (activeRumors.length === 0) {
             rumorsContainer.innerHTML = `<div class="dash-card"><span style="color:var(--text-muted)">No court rumors flagged by counterintelligence.</span></div>`;
         } else {
-            rumorsContainer.innerHTML = game.intelligenceSystem.rumors.map(r => `
+            rumorsContainer.innerHTML = activeRumors.map(r => `
                 <div class="dash-card">
                     <h4 style="color:var(--warning); margin-bottom:4px;">RUMOR DOSSIER</h4>
                     <p style="font-size:0.78rem; color:var(--text-main); margin-bottom:6px;">"${r.text}"</p>

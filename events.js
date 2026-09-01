@@ -3417,7 +3417,11 @@ function processCharacterDeaths() {
             Math.random() < deathChance
         ) {
 
-            character.status = "Deceased";
+            if (typeof killCharacter === "function") {
+                killCharacter(character, "Natural Causes");
+            } else {
+                character.status = "Deceased";
+            }
 
             logEvent(
                 `${character.name} has died at the age of ${character.age}.`
@@ -3451,7 +3455,11 @@ function triggerSuccession() {
     }
 
     if (oldRuler) {
-        oldRuler.status = "Deceased";
+        if (typeof killCharacter === "function") {
+            killCharacter(oldRuler, "Succession");
+        } else {
+            oldRuler.status = "Deceased";
+        }
         oldRuler.isPlayer = false;
         oldRuler.legacy = {
             title: typeof generateLegacyTitle === "function" ? generateLegacyTitle(oldRuler) : "THE SOVEREIGN",

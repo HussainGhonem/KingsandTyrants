@@ -256,13 +256,79 @@ function simulateCompetingHouses() {
     });
 }
 
+function resolveRumorsForDeceasedCharacter(characterId, characterName) {
+    const intelligence = game.intelligenceSystem || game.intelligence;
+    if (!intelligence || !Array.isArray(intelligence.rumors)) return 0;
+
+    let resolvedCount = 0;
+    intelligence.rumors.forEach(rumor => {
+        const subjectId = rumor.subjectId ?? rumor.targetId ?? rumor.sourceId;
+        if (subjectId === characterId && rumor.status !== "Resolved") {
+            rumor.status = "Resolved";
+            rumor.resolution = "Subject Deceased";
+            rumor.resolvedAt = game.date.toISOString();
+            rumor.resolutionNote = `${characterName} died before the allegation could be conclusively resolved.`;
+            rumor.investigated = true;
+            resolvedCount++;
+        }
+    });
+
+    if (resolvedCount > 0) {
+        log(`${resolvedCount} intelligence rumor(s) concerning ${characterName} were closed following the subject's death.`);
+        game.monthActions ||= [];
+        game.monthActions.push({
+            headline: "RUMOR CLOSED — SUBJECT DECEASED",
+            lead: `The allegations concerning ${characterName} were archived without a final finding after the subject's death.`
+        });
+    }
+    return resolvedCount;
+}
+
+function createSuspiciousDeathCase(character, reason = "Suspicious") {
+    const intelligence = game.intelligenceSystem;
+    if (!intelligence) return null;
+    intelligence.cases ||= [];
+    const existing = intelligence.cases.find(c => c.type === "Suspicious Death" && c.subjectId === character.id && c.status === "Open");
+    if (existing) return existing;
+
+    const caseRecord = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        title: `Suspicious Death of ${character.name}`,
+        subjectId: character.id,
+        type: "Suspicious Death",
+        status: "Open",
+        priority: "High",
+        evidence: 10,
+        createdAt: new Date(game.date),
+        notes: `The subject died under ${reason.toLowerCase()} circumstances while intelligence allegations remained unresolved.`
+    };
+    intelligence.cases.push(caseRecord);
+    log(`NEW INTELLIGENCE CASE: Suspicious Death of ${character.name}.`);
+    return caseRecord;
+}
+
+function killCharacter(character, reason = "Unknown") {
+    if (!character || character.status === "Deceased") return false;
+
+    character.status = "Deceased";
+    character.deathDate = game.date.toISOString();
+    character.deathReason = reason;
+    character.health = 0;
+    const resolvedRumorCount = resolveRumorsForDeceasedCharacter(character.id, character.name);
+    if (resolvedRumorCount > 0 && (reason === "Assassination" || reason === "Suspicious")) {
+        createSuspiciousDeathCase(character, reason);
+    }
+    log(`${character.name} has died. Cause: ${reason}.`);
+    return true;
+}
+
 function processMortalityAndConsequences() {
     game.characters.forEach(c => {
         if (c.status === "Deceased") return;
 
         // Check death condition
         if (c.health <= 0 || (c.age >= 80 && Math.random() < 0.15)) {
-            c.status = "Deceased";
+            killCharacter(c, c.health <= 0 ? "Illness" : "Natural Causes");
             const wasPlayerOrRuler = c.isPlayer || c.id === game.realm?.rulerId || c.id === game.dynasty?.headId;
             c.isPlayer = false;
 
@@ -781,7 +847,8 @@ function simulateIntelligenceCases() {
     const approval = game.realm?.approval || 50;
     const baseChance = 0.05 + (fervor / 200) + ((100 - approval) / 300);
 
-    if (Math.random() < baseChance && game.intelligenceSystem.rumors.length < 5) {
+    const activeRumorCount = game.intelligenceSystem.rumors.filter(r => r.status !== "Resolved").length;
+    if (Math.random() < baseChance && activeRumorCount < 5) {
         // Pick dynamic target character with secrets or high ambition
         const potentialTargets = game.characters.filter(c => c.status === 'Active' && c.id !== getHeadId());
         if (potentialTargets.length > 0) {
