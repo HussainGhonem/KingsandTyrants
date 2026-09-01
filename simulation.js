@@ -212,23 +212,35 @@ function ageAllCharacters() {
             c.health -= Math.floor(Math.random() * 4) + 1;
         }
 
-        // Life Stage Milestones
-        if (c.age === 6) {
-            log(`${c.name} has reached age 6 and commenced formal education.`);
-        } else if (c.age === 12) {
-            log(`${c.name} has reached adolescence (Age 12), displaying strong aptitude.`);
+        // Childhood Milestones Development (Tasks 1, 3, 4)
+        if (c.age === 5) {
+            const earlyTraits = ["Curious", "Bold", "Quiet", "Empathetic", "Observant", "Restless"];
+            const picked = earlyTraits[Math.floor(Math.random() * earlyTraits.length)];
+            if (!c.traits.includes(picked)) c.traits.push(picked);
+            log(`${c.name} reached Age 5 (Infant → Child) and displays early personality: ${picked}.`);
+        } else if (c.age === 10) {
+            c.aptitude = Math.floor(Math.random() * 50) + 50;
+            log(`${c.name} reached Age 10 (Childhood Aptitude Assessment: ${c.aptitude}%).`);
+        } else if (c.age === 13) {
+            const adolescentTraits = ["Idealistic", "Reckless", "Philosophical", "Stubborn", "Charismatic"];
+            const picked = adolescentTraits[Math.floor(Math.random() * adolescentTraits.length)];
+            if (!c.traits.includes(picked)) c.traits.push(picked);
+            log(`${c.name} reached Age 13 (Adolescence) and adopted trait: ${picked}.`);
         } else if (c.age === 16 && c.houseId === "house_vance") {
-            // Queue Education Choice Event for Royal Lineage
             game.aiDirector.eventQueue.push({
                 id: `edu_${c.id}`,
-                title: `EDUCATION MILESTONE: ${c.name.toUpperCase()} (AGE 16)`,
+                title: `ROYAL EDUCATION DECISION: ${c.name.toUpperCase()} (AGE 16)`,
                 desc: `${c.name} has reached age 16. Select their specialized royal education field to shape future traits and career capability.`,
                 choices: [
-                    { text: "🎖️ Military Officer Academy (+20 Mil Favor, Hawk Trait)", act: () => { c.militarySupport += 20; c.traits.push("Hawk"); log(`${c.name} entered the Military Officer Academy.`); } },
-                    { text: "🏛️ Royal University of Law & Politics (+20 Public Support, Diplomat)", act: () => { c.publicSupport += 20; c.traits.push("Diplomat"); log(`${c.name} entered the Royal University.`); } },
-                    { text: "📈 Sovereign Economic Institute (+20 Aristocratic Favor, Wealthy)", act: () => { c.aristocraticSupport += 20; c.traits.push("Wealthy"); log(`${c.name} entered the Economic Institute.`); } }
+                    { text: "🎖️ Military Officer Academy (+20 Mil Favor, Hawk Trait)", act: () => { c.militarySupport += 20; c.traits.push("Hawk"); c.education = "Military Academy"; log(`${c.name} entered the Military Officer Academy.`); } },
+                    { text: "🏛️ Royal University of Law & Politics (+20 Public Support, Diplomat)", act: () => { c.publicSupport += 20; c.traits.push("Diplomat"); c.education = "Royal University"; log(`${c.name} entered the Royal University.`); } },
+                    { text: "📈 Sovereign Economic Institute (+20 Aristocratic Favor, Wealthy)", act: () => { c.aristocraticSupport += 20; c.traits.push("Wealthy"); c.education = "Economic Institute"; log(`${c.name} entered the Economic Institute.`); } }
                 ]
             });
+        } else if (c.age === 18) {
+            const careers = ["Military Officer", "Parliamentarian Candidate", "Corporate Executive", "Diplomatic Envoy", "Bureaucrat"];
+            c.career = careers[Math.floor(Math.random() * careers.length)];
+            log(`${c.name} reached Age 18 (Young Adult) and embarked on career: ${c.career}.`);
         }
     });
 }
@@ -476,16 +488,78 @@ function replaceDeceasedRoles(character) {
 function killCharacter(character, reason = "Unknown") {
     if (!character || game.isCharacterDeceased(character)) return false;
 
+    // Cause-of-Death & Public vs Intel Assessment (Task 11)
+    const causes = ["Old Age", "Heart Failure", "Illness", "Car Accident", "Assassination", "Coup Execution", "Unknown"];
+    const actualCause = (reason && reason !== "Unknown") ? reason : causes[Math.floor(Math.random() * causes.length)];
+    const isSuspicious = actualCause === "Assassination" || actualCause === "Unknown" || actualCause === "Coup Execution";
+
     character.status = "Deceased";
     character.deathDate = game.date.toISOString();
-    character.deathReason = reason;
+    character.deathReason = actualCause;
     character.health = 0;
+
+    // 1. Role Replacement (Task 12)
     replaceDeceasedRoles(character);
-    const resolvedRumorCount = resolveRumorsForDeceasedCharacter(character.id, character.name);
-    if (resolvedRumorCount > 0 && (reason === "Assassination" || reason === "Suspicious")) {
-        createSuspiciousDeathCase(character, reason);
+
+    // 2. Terminate Wiretaps & Clear Target Rumors (Task 18)
+    if (game.intelligenceSystem) {
+        if (game.intelligenceSystem.activeWiretaps) {
+            game.intelligenceSystem.activeWiretaps.delete(character.id);
+        }
     }
-    log(`${character.name} has died. Cause: ${reason}.`);
+    const resolvedRumorCount = resolveRumorsForDeceasedCharacter(character.id, character.name);
+    if (resolvedRumorCount > 0 && isSuspicious) {
+        createSuspiciousDeathCase(character, actualCause);
+    }
+
+    // 3. Spouse Widowhood & Children Update (Task 18)
+    if (character.spouseId) {
+        const spouse = game.characters.find(ch => ch.id === character.spouseId);
+        if (spouse && !game.isCharacterDeceased(spouse)) {
+            spouse.married = false;
+            spouse.spouseStatus = "Widowed";
+            log(`WIDOWHOOD: ${spouse.name} is now widowed following the death of ${character.name}.`);
+        }
+    }
+
+    // 4. Preserve in Deceased Historical Registry (Task 1 & 18)
+    if (!game.history) game.history = { timeline: [], legacyPoints: 0, events: [], deceasedCharacters: [], chronicle: [] };
+    if (!game.history.deceasedCharacters) game.history.deceasedCharacters = [];
+
+    const existsInHistory = game.history.deceasedCharacters.some(c => c.id === character.id);
+    if (!existsInHistory) {
+        game.history.deceasedCharacters.push({
+            id: character.id,
+            name: character.name,
+            gender: character.gender,
+            dynasty: character.houseId,
+            role: character.role,
+            ageAtDeath: character.age,
+            deathDate: character.deathDate,
+            causeOfDeath: actualCause,
+            parents: Array.isArray(character.parents) ? character.parents : [character.parentId, character.motherId].filter(Boolean),
+            children: Array.isArray(character.children) ? character.children : [],
+            spouseId: character.spouseId,
+            traits: character.traits ? [...character.traits] : [],
+            achievements: character.achievements || [],
+            memories: character.memory ? [...character.memory] : [],
+            secret: character.secret || ""
+        });
+    }
+
+    // 5. Record in Dynasty Chronicle (Task 17 & 18)
+    if (!game.history.chronicle) game.history.chronicle = [];
+    game.history.chronicle.push({
+        year: game.date.getFullYear(),
+        event: `${character.name} (${character.role}) died. Cause: ${actualCause}.`
+    });
+
+    // 6. Recalculate Succession Registry (Task 8 & 18)
+    if (typeof game.updateSuccessionRegistry === 'function') {
+        game.updateSuccessionRegistry();
+    }
+
+    log(`${character.name} has died. Cause: ${actualCause}. Record archived in historical chronicle.`);
     return true;
 }
 
