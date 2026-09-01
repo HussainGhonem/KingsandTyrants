@@ -369,6 +369,24 @@ function investigateRumor(rumorId) {
     updateUI();
 }
 
+function closeIntelligenceCase(caseId, reason = "Closed by sovereign decision") {
+    const cases = game.intelligenceSystem?.cases;
+    if (!Array.isArray(cases)) return;
+    const caseRecord = cases.find(c => c.id === caseId);
+    if (!caseRecord || caseRecord.status === "Closed") return;
+
+    caseRecord.status = "Closed";
+    caseRecord.closedAt = game.date.toISOString();
+    caseRecord.closureReason = reason;
+    log(`INTELLIGENCE CASE CLOSED: ${caseRecord.title}. Reason: ${reason}.`);
+    game.monthActions ||= [];
+    game.monthActions.push({
+        headline: "INTELLIGENCE CASE CLOSED",
+        lead: `${caseRecord.title} has been closed by sovereign decision. The case record remains archived for future review.`
+    });
+    updateUI();
+}
+
 function mollifyFaction(id) {
     const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
     const f = game.factions.find(x => x.id === numericId);

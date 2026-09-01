@@ -642,6 +642,28 @@ function renderIntelligenceDashboard() {
             `).join('');
         }
     }
+
+    const casesContainer = document.getElementById('cases-container');
+    if (casesContainer) {
+        const cases = game.intelligenceSystem.cases || [];
+        if (cases.length === 0) {
+            casesContainer.innerHTML = `<div class="dash-card"><span style="color:var(--text-muted)">No intelligence cases currently on file.</span></div>`;
+        } else {
+            casesContainer.innerHTML = cases.slice().reverse().map(c => {
+                const subject = game.characters.find(ch => ch.id === c.subjectId);
+                const isOpen = c.status === 'Open';
+                return `
+                    <div class="dash-card">
+                        <h4 style="color:${isOpen ? 'var(--warning)' : 'var(--text-muted)'}; margin-bottom:4px;">${isOpen ? 'OPEN CASE' : 'CLOSED CASE'}</h4>
+                        <p style="font-size:0.78rem; margin-bottom:6px;"><strong>${c.title}</strong></p>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;">Type: ${c.type || 'General Intelligence'} • Subject: ${subject ? subject.name : 'Unknown'} • Evidence: ${c.evidence || 0}%</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:8px;">${isOpen ? (c.notes || 'Investigation active.') : `Closed: ${c.closureReason || 'No reason recorded.'}`}</div>
+                        ${isOpen ? `<button class="action-btn" style="width:100%;" onclick="closeIntelligenceCase(${c.id})">Close Case</button>` : `<div style="font-size:0.68rem; color:var(--text-muted);">Archived ${c.closedAt ? new Date(c.closedAt).toLocaleDateString('en-GB') : ''}</div>`}
+                    </div>
+                `;
+            }).join('');
+        }
+    }
 }
 
 function renderLegacyHistory() {
