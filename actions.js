@@ -1213,8 +1213,14 @@ function openCharModal(id) {
     const isDossierUnlocked = game.intelligenceSystem.discoveredSecrets.has(c.id);
 
     if (modalClaim) {
+        const ideo = c.ideology || { economic: 0, authoritarian: 0, traditional: 0, nationalist: 0, centralized: 0 };
         modalClaim.innerHTML = `
-            <strong>Dynastic Profile:</strong> Personal Ambition: ${c.ambition}% | Military Favor: ${c.militarySupport}%<br>
+            <strong>Dynastic Profile & Ambition:</strong><br>
+            • Public Goal: <strong style="color:var(--accent-gold)">${c.ambitionGoal || 'Maintain Status'}</strong> (${c.ambition}% Ambition)<br>
+            • Secret Ambition: <strong style="color:var(--danger)">${c.secretAmbition || 'Unknown'}</strong><br>
+            • Power Base: <strong>${c.powerBase || 'Court'}</strong> (${(c.followers || 1000).toLocaleString()} Followers)<br>
+            • Loyalty: Personal ${c.personalLoyalty || 50}% • Dynastic ${c.dynasticLoyalty || 50}% • Fear: ${c.fear || 10}%<br>
+            • Ideology Vector: Econ ${ideo.economic > 0 ? '+' : ''}${ideo.economic} | Auth ${ideo.authoritarian > 0 ? '+' : ''}${ideo.authoritarian} | Trad ${ideo.traditional > 0 ? '+' : ''}${ideo.traditional}<br>
             ${isDossierUnlocked ? `<span style="color:var(--danger)"><strong>Intelligence Dossier:</strong> ${c.secret}</span>` : 'No suspicious dossier unlocked. Deploy wiretap or investigate rumors.'}
         `;
     }
@@ -1231,14 +1237,14 @@ function openCharModal(id) {
 
     if (actionsEl) {
         let relHtml = '<div style="margin-top:8px; border-top:1px solid var(--panel-border); padding-top:6px;">';
-        relHtml += '<h4 style="color:var(--text-muted); font-size:0.7rem; margin-bottom:4px;">Relationships Web</h4>';
+        relHtml += '<h4 style="color:var(--text-muted); font-size:0.7rem; margin-bottom:4px;">Multi-Vector Relationship Matrix</h4>';
         game.characters.forEach(other => {
             if (other.id === c.id || game.isCharacterDeceased(other)) return;
             const rel = game.getRelation(c.id, other.id);
             const color = rel.value >= 40 ? 'var(--success)' : (rel.value <= -40 ? 'var(--danger)' : 'var(--accent-gold)');
-            relHtml += `<div style="display:flex; justify-content:space-between; font-size:0.7rem; padding:2px 0;">`;
-            relHtml += `<span>${other.name}</span>`;
-            relHtml += `<span style="color:${color};">${rel.value} (${rel.type}) ${rel.alliance ? '🤝' : ''}</span>`;
+            relHtml += `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.68rem; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">`;
+            relHtml += `<span><strong>${other.name}</strong> (${rel.type}${rel.alliance ? ' 🤝' : ''})</span>`;
+            relHtml += `<span style="color:${color};">Love:${rel.love ?? 50} Respect:${rel.respect ?? 50} Fear:${rel.fear ?? 10} Trust:${rel.trust ?? 30} Jealousy:${rel.jealousy ?? 20}</span>`;
             relHtml += `</div>`;
         });
         relHtml += '</div>';
@@ -1307,6 +1313,9 @@ function charAction(id, type) {
         c.memory.push({ year: game.date.getFullYear(), delta: -60, reason: "Placed under royal arrest" });
         game.realm.prestige += 15;
         log(`Decreed formal arrest and detainment of ${c.name}.`);
+        if (typeof game.triggerCascade === 'function') {
+            game.triggerCascade("Arrest of Political Figure", c.name);
+        }
     } else if (type === 'pardon') {
         c.status = "Active";
         c.opinion += 30;

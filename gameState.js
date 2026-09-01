@@ -13,6 +13,7 @@ game.currentTab = 'family';
 game.selectedProvinceId = 3;
 game.monthActions = [];
 game.totalMonthsPassed = 0;
+game.delayedEffects = []; // Queue for second-order consequence cascades
 
 // Config
 game.config = {
@@ -62,6 +63,22 @@ game.currency = {
     usdExchange: 0.25,
     trend: "+0.2%",
     confidence: "Stable Sovereign Backing"
+};
+
+// Sovereign Reputation vs Prestige & Corruption Engine
+game.realm.reputation = 65; // What people think of you
+game.realm.fear = 30;       // How much elites/citizens fear you
+
+game.corruptionSystem = {
+    corruption: 28,        // 0-100 overall state corruption
+    taxEfficiency: 82,    // % tax collected
+    eliteCapture: 35,     // Corporate/oligarch hold over ministries
+    governmentWaste: 20   // Wasteful spending
+};
+
+// Dynamic Scandal Engine
+game.scandalEngine = {
+    activeScandals: [] // [{ id, title, type, subjectId, truth, publicBelief, evidence, mediaIntensity, politicalImpact }]
 };
 
 // Detailed Sovereign Budget & Debt Engine
@@ -164,15 +181,40 @@ game.military = {
     ]
 };
 
-// Politics & Parliament
+// Politics & Parliament Engine
 game.politics = {
     parliamentSupport: 54,
+    parliamentaryTrust: 65, // 0-100: Trust in Crown & Executive
     opposition: 31,
     corruption: 28,
     authoritarianism: 42,
     activeBill: null,
     nextElectionYear: game.date.getFullYear() + 4
 };
+
+// Political Parties with 5-Axis Ideology Vectors
+game.parties = [
+    {
+        id: "rcp", name: "Royal Conservative Party", seats: 34, popularity: 38, leaderId: 5, stance: "Pro-Crown",
+        ideology: { economic: 30, authoritarian: 40, traditional: 45, nationalist: 35, centralized: 30 }
+    },
+    {
+        id: "ndp", name: "National Development Party", seats: 28, popularity: 30, leaderId: 8, stance: "Industrial",
+        ideology: { economic: 45, authoritarian: 10, traditional: -10, nationalist: 15, centralized: 10 }
+    },
+    {
+        id: "rc",  name: "Reform Coalition", seats: 20, popularity: 22, leaderId: 7, stance: "Moderate",
+        ideology: { economic: -15, authoritarian: -35, traditional: -30, nationalist: -25, centralized: -20 }
+    },
+    {
+        id: "wa",  name: "Workers' Alliance", seats: 12, popularity: 15, leaderId: 3, stance: "Left",
+        ideology: { economic: -45, authoritarian: -10, traditional: -20, nationalist: -15, centralized: 15 }
+    },
+    {
+        id: "rf",  name: "Republican Front", seats: 6, popularity: 8, leaderId: 4, stance: "Anti-Crown",
+        ideology: { economic: -30, authoritarian: -50, traditional: -40, nationalist: -35, centralized: -40 }
+    }
+];
 
 // Regime Stability
 game.regime = {
@@ -471,6 +513,47 @@ game.adjustLegitimacy = function(delta) {
     return game.adjustMetric(game.realm, 'legitimacy', delta, 0, 100);
 };
 
+game.scheduleDelayedEffect = function(delayMonths, title, triggerFn) {
+    if (!Array.isArray(game.delayedEffects)) game.delayedEffects = [];
+    game.delayedEffects.push({
+        executeAtMonth: (game.totalMonthsPassed || 0) + delayMonths,
+        title,
+        act: triggerFn
+    });
+};
+
+game.triggerCascade = function(actionType, targetName) {
+    // 1 Month later
+    game.scheduleDelayedEffect(1, `${actionType}: Media & Popular Backlash`, () => {
+        game.politics.opposition = Math.min(100, game.politics.opposition + 5);
+        game.realm.approval = Math.max(0, game.realm.approval - 4);
+        log(`SECOND-ORDER CONSEQUENCE (1 Month): Popular opposition grows following ${actionType} against ${targetName || 'opposition'}.`);
+        game.monthActions.push({
+            headline: `OUTCRYS OVER ${actionType.toUpperCase()}`,
+            lead: `Independent press and student groups condemned the state's actions regarding ${targetName || 'recent events'}.`
+        });
+    });
+
+    // 3 Months later
+    game.scheduleDelayedEffect(3, `${actionType}: Protest Movement Forms`, () => {
+        game.regime.revolutionaryPressure = Math.min(100, game.regime.revolutionaryPressure + 8);
+        game.realm.stability = Math.max(0, game.realm.stability - 6);
+        log(`SECOND-ORDER CONSEQUENCE (3 Months): Organized protest movement formed in response to ${actionType}.`);
+    });
+
+    // 6 Months later
+    game.scheduleDelayedEffect(6, `${actionType}: Parliamentary Inquiry`, () => {
+        game.politics.parliamentaryTrust = Math.max(0, (game.politics.parliamentaryTrust || 50) - 10);
+        log(`SECOND-ORDER CONSEQUENCE (6 Months): Parliament introduced an emergency oversight bill questioning sovereign authority.`);
+    });
+
+    // 12 Months later
+    game.scheduleDelayedEffect(12, `${actionType}: Military High Command Review`, () => {
+        game.military.officerConspiracy = Math.min(100, (game.military.officerConspiracy || 30) + 6);
+        log(`SECOND-ORDER CONSEQUENCE (12 Months): Garrison commanders begin secretly debating state stability.`);
+    });
+};
+
 game.bindStateMetrics();
 
 game.improveRelation = function(fromId, toId, amount) {
@@ -606,6 +689,10 @@ game.generateCharacter = function(opts = {}) {
     const fear = opts.fear || fearPool[Math.floor(Math.random() * fearPool.length)];
     const demeanor = opts.demeanor || demeanorPool[Math.floor(Math.random() * demeanorPool.length)];
 
+    const ambitionGoals = ["Become Minister", "Become Prime Minister", "Control Military Command", "Expand House Estate", "Enact Democratic Reform", "Become Ruler"];
+    const secretAmbitions = ["Overthrow Crown", "Monopolize State Trade", "Control Intelligence Directorate", "Form Cadet Branch", "Become Dictator", "Seize Palace Assets"];
+    const powerBases = ["Military", "Oligarchs", "Parliament", "Bureaucracy", "Provincial Militia", "Popular Masses", "Intelligence Network"];
+
     const newChar = {
         id,
         name,
@@ -617,6 +704,20 @@ game.generateCharacter = function(opts = {}) {
         health: opts.health || Math.floor(Math.random() * 30) + 70,
         opinion: opts.opinion !== undefined ? opts.opinion : 60,
         ambition: opts.ambition || Math.floor(Math.random() * 50) + 40,
+        ambitionGoal: opts.ambitionGoal || ambitionGoals[Math.floor(Math.random() * ambitionGoals.length)],
+        secretAmbition: opts.secretAmbition || secretAmbitions[Math.floor(Math.random() * secretAmbitions.length)],
+        personalLoyalty: opts.personalLoyalty ?? Math.floor(Math.random() * 50) + 35,
+        dynasticLoyalty: opts.dynasticLoyalty ?? Math.floor(Math.random() * 50) + 40,
+        fear: opts.fearVal ?? Math.floor(Math.random() * 40) + 10,
+        followers: opts.followers || Math.floor(Math.random() * 5000) + 1000,
+        powerBase: opts.powerBase || powerBases[Math.floor(Math.random() * powerBases.length)],
+        ideology: {
+            economic: opts.economicIdeology ?? (Math.floor(Math.random() * 100) - 50), // -50 Left to +50 Right
+            authoritarian: opts.authoritarianIdeology ?? (Math.floor(Math.random() * 100) - 50), // -50 Lib to +50 Auth
+            traditional: opts.traditionalIdeology ?? (Math.floor(Math.random() * 100) - 50), // -50 Prog to +50 Trad
+            nationalist: opts.nationalistIdeology ?? (Math.floor(Math.random() * 100) - 50), // -50 Intl to +50 Nat
+            centralized: opts.centralizedIdeology ?? (Math.floor(Math.random() * 100) - 50) // -50 Fed to +50 Cent
+        },
         claimStrength: opts.claimStrength || 0,
         militarySupport: opts.militarySupport || Math.floor(Math.random() * 40) + 20,
         aristocraticSupport: opts.aristocraticSupport || Math.floor(Math.random() * 40) + 20,
@@ -646,7 +747,9 @@ game.generateCharacter = function(opts = {}) {
 // Initial Core Characters
 game.characters = [
     { id: 1, name: "Victor Vance", gender: "Male", houseId: "house_vance", type: "family", role: "Grand Duke (You)", age: 60, health: 80, opinion: 100,
-        ambition: 90, claimStrength: 100, militarySupport: 90, aristocraticSupport: 80, publicSupport: 65,
+        ambition: 90, ambitionGoal: "Maintain Dynastic Rule", secretAmbition: "Consolidate Absolute Monarchy", personalLoyalty: 100, dynasticLoyalty: 100, fear: 10, followers: 85000, powerBase: "Crown & Guard",
+        ideology: { economic: 20, authoritarian: 30, traditional: 40, nationalist: 25, centralized: 35 },
+        claimStrength: 100, militarySupport: 90, aristocraticSupport: 80, publicSupport: 65,
         traits: ["Charismatic", "Paranoid"], isPlayer: true, status: "Active", married: true, spouseId: 3,
         children: [
             { name: "Prince Victor II", age: 8, education: "Royal Academy" },
@@ -656,7 +759,9 @@ game.characters = [
         memory: [{ year: game.date.getFullYear(), delta: 100, reason: "Throne Initialized" }] },
 
     { id: 2, name: "Alexander Vance", gender: "Male", houseId: "house_vance", type: "family", role: "Crown Prince (Heir)", age: 30, health: 95, opinion: 75,
-        ambition: 82, claimStrength: 100, militarySupport: 71, aristocraticSupport: 68, publicSupport: 74,
+        ambition: 82, ambitionGoal: "Accelerate Succession", secretAmbition: "Become Ruler", personalLoyalty: 65, dynasticLoyalty: 85, fear: 20, followers: 32000, powerBase: "Garrison & Youth",
+        ideology: { economic: -10, authoritarian: -15, traditional: -20, nationalist: 10, centralized: -10 },
+        claimStrength: 100, militarySupport: 71, aristocraticSupport: 68, publicSupport: 74,
         traits: ["Reckless", "Charming"], isPlayer: false, status: "Active", married: true, parentId: 1, motherId: 3,
         children: [
             { name: "Prince Christian", age: 4, education: "Nursery" }
@@ -665,37 +770,49 @@ game.characters = [
         memory: [{ year: game.date.getFullYear() - 3, delta: 20, reason: "Co-funded foundation" }] },
 
     { id: 3, name: "Duchess Elena", gender: "Female", houseId: "house_vance", type: "family", role: "Spouse & Consort", age: 57, health: 85, opinion: 70,
-        ambition: 60, claimStrength: 30, militarySupport: 35, aristocraticSupport: 75, publicSupport: 60,
+        ambition: 60, ambitionGoal: "Secure Children's Influence", secretAmbition: "Control Court Appointments", personalLoyalty: 75, dynasticLoyalty: 90, fear: 15, followers: 12000, powerBase: "Court Nobility",
+        ideology: { economic: 30, authoritarian: 10, traditional: 45, nationalist: 15, centralized: 20 },
+        claimStrength: 30, militarySupport: 35, aristocraticSupport: 75, publicSupport: 60,
         traits: ["Calculating", "Greedy"], isPlayer: false, status: "Active", married: true, spouseId: 1,
         hiddenAmbition: 65, secret: "Monopolizes capital art market auctions.",
         memory: [{ year: game.date.getFullYear() - 4, delta: 15, reason: "Diplomatic Marriage" }] },
 
     { id: 4, name: "Julian Vance", gender: "Male", houseId: "house_vance", type: "family", role: "Younger Brother", age: 53, health: 78, opinion: 40,
-        ambition: 88, claimStrength: 65, militarySupport: 52, aristocraticSupport: 45, publicSupport: 35,
+        ambition: 88, ambitionGoal: "Expand House Estate", secretAmbition: "Become Ruler", personalLoyalty: 35, dynasticLoyalty: 50, fear: 25, followers: 18400, powerBase: "Provincial Nobility",
+        ideology: { economic: 40, authoritarian: 35, traditional: 50, nationalist: 40, centralized: -30 },
+        claimStrength: 65, militarySupport: 52, aristocraticSupport: 45, publicSupport: 35,
         traits: ["Envious", "Zealot"], isPlayer: false, status: "Active", married: true, parentId: 1,
         hiddenAmbition: 94, secret: "Funneling southern provincial duties into private logistics accounts.",
         memory: [{ year: game.date.getFullYear() - 3, delta: -20, reason: "Disputed provincial duties" }] },
 
     { id: 5, name: "Gen. Roger Vance", gender: "Male", houseId: "house_qamar", type: "cabinet", role: "Minister of Defense", age: 69, health: 65, opinion: 82,
-        ambition: 40, claimStrength: 20, militarySupport: 88, aristocraticSupport: 60, publicSupport: 50,
+        ambition: 40, ambitionGoal: "Control Military Command", secretAmbition: "Establish Military Oversight", personalLoyalty: 80, dynasticLoyalty: 75, fear: 10, followers: 45000, powerBase: "Military",
+        ideology: { economic: 10, authoritarian: 45, traditional: 30, nationalist: 50, centralized: 40 },
+        claimStrength: 20, militarySupport: 88, aristocraticSupport: 60, publicSupport: 50,
         traits: ["Hawk", "Brave"], isPlayer: false, status: "Active",
         hiddenAmbition: 50, secret: "Pledged military support to Crown Prince Alexander if Duke falls ill.",
         memory: [{ year: game.date.getFullYear() - 1, delta: 25, reason: "Defense procurement expanded" }] },
 
     { id: 6, name: "Director Kravitz", gender: "Male", houseId: "house_valerian", type: "cabinet", role: "Intel Chief", age: 52, health: 85, opinion: 60,
-        ambition: 70, claimStrength: 0, militarySupport: 40, aristocraticSupport: 45, publicSupport: 25,
+        ambition: 70, ambitionGoal: "Expand Surveillance State", secretAmbition: "Control Intelligence Directorate", personalLoyalty: 50, dynasticLoyalty: 40, fear: 12, followers: 8500, powerBase: "Intelligence Network",
+        ideology: { economic: 0, authoritarian: 50, traditional: 0, nationalist: 20, centralized: 50 },
+        claimStrength: 0, militarySupport: 40, aristocraticSupport: 45, publicSupport: 25,
         traits: ["Deceitful", "Cynical"], isPlayer: false, status: "Active",
         hiddenAmbition: 85, secret: "Sells electronic wiretap logs to foreign intelligence agencies.",
         memory: [{ year: game.date.getFullYear() - 2, delta: 10, reason: "Surveillance expansion authorized" }] },
 
     { id: 7, name: "Lady Cassandra", gender: "Female", houseId: "house_rashid", type: "cabinet", role: "Foreign Minister", age: 47, health: 90, opinion: 75,
-        ambition: 55, claimStrength: 0, militarySupport: 30, aristocraticSupport: 82, publicSupport: 68,
+        ambition: 55, ambitionGoal: "Strengthen International Alliances", secretAmbition: "Become Prime Minister", personalLoyalty: 70, dynasticLoyalty: 60, fear: 15, followers: 16000, powerBase: "Parliament",
+        ideology: { economic: -20, authoritarian: -25, traditional: -30, nationalist: -40, centralized: -10 },
+        claimStrength: 0, militarySupport: 30, aristocraticSupport: 82, publicSupport: 68,
         traits: ["Diplomat", "Calm"], isPlayer: false, status: "Active",
         hiddenAmbition: 60, secret: "Maintains secret diplomatic backchannel with Norland Coalition.",
         memory: [{ year: game.date.getFullYear() - 1, delta: 15, reason: "Appointed Foreign Minister" }] },
 
     { id: 8, name: "Oligarch Berezov", gender: "Male", houseId: "house_berezov", type: "cabinet", role: "Interior Minister", age: 66, health: 60, opinion: 55,
-        ambition: 85, claimStrength: 0, militarySupport: 30, aristocraticSupport: 90, publicSupport: 28,
+        ambition: 85, ambitionGoal: "Monopolize State Trade", secretAmbition: "Control Government Budget", personalLoyalty: 45, dynasticLoyalty: 50, fear: 18, followers: 28000, powerBase: "Oligarchs",
+        ideology: { economic: 50, authoritarian: 20, traditional: 10, nationalist: 30, centralized: -20 },
+        claimStrength: 0, militarySupport: 30, aristocraticSupport: 90, publicSupport: 28,
         traits: ["Corrupt", "Wealthy"], isPlayer: false, status: "Active", married: true,
         hiddenAmbition: 88, secret: "Owns 40% of Iron Coast heavy manufacturing unlisted shares.",
         memory: [{ year: game.date.getFullYear() - 1, delta: 20, reason: "Celebrated diplomatic marriage" }] }
