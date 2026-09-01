@@ -406,6 +406,12 @@ game.normalizeCharacterGender = function(character) {
     return character.gender;
 };
 
+game.isCharacterDeceased = function(character) {
+    if (!character) return true;
+    const status = String(character.status || "").trim().toLowerCase();
+    return status === "deceased" || status === "dead" || status === "died" || Boolean(character.deathDate);
+};
+
 game.sanitizeState = function() {
     if (!game.realm) game.realm = {};
     if (!game.politics) game.politics = {};

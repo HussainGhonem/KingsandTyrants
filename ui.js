@@ -82,7 +82,7 @@ function renderCourt() {
     const list = document.getElementById('court-list');
     if (!list) return;
     list.innerHTML = "";
-    const filtered = game.characters.filter(c => c.type === game.currentTab && c.status !== "Deceased");
+    const filtered = game.characters.filter(c => c.type === game.currentTab && !game.isCharacterDeceased(c));
 
     filtered.forEach(c => {
         let color = c.opinion >= 60 ? 'var(--success)' : (c.opinion <= 35 ? 'var(--danger)' : 'var(--accent-gold)');
