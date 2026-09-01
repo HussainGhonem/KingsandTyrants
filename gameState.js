@@ -395,6 +395,17 @@ game.clampMetric = function(value, min = 0, max = 100) {
     return Math.min(max, Math.max(min, num));
 };
 
+game.normalizeCharacterGender = function(character) {
+    if (!character) return "Unknown";
+    const role = String(character.role || "").toLowerCase();
+    const feminineTitle = /\b(wife|queen|duchess|mother|princess|lady|female)\b/.test(role);
+    const masculineTitle = /\b(husband|king|duke|father|prince|lord|male)\b/.test(role);
+    if (feminineTitle) character.gender = "Female";
+    else if (masculineTitle) character.gender = "Male";
+    else if (character.gender !== "Male" && character.gender !== "Female") character.gender = "Unknown";
+    return character.gender;
+};
+
 game.sanitizeState = function() {
     if (!game.realm) game.realm = {};
     if (!game.politics) game.politics = {};
@@ -403,6 +414,7 @@ game.sanitizeState = function() {
     if (!game.military) game.military = {};
     game.economy ||= {};
     game.economy.industrialCapacity = game.clampMetric(game.economy.industrialCapacity, 0, 100);
+    if (Array.isArray(game.characters)) game.characters.forEach(game.normalizeCharacterGender);
     game.military.modernization = game.clampMetric(game.military.modernization, 0, 100);
     game.military.equipment = game.clampMetric(game.military.equipment, 0, 100);
     game.military.airPower = game.clampMetric(game.military.airPower, 0, 100);

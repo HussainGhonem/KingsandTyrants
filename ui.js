@@ -329,6 +329,10 @@ function renderDynastyTreeVisualizer() {
     const ruler = (typeof getRulerCharacter === 'function' ? getRulerCharacter() : game.characters.find(x => x.isPlayer && (x.status === "Active" || x.status === "Alive"))) || game.characters.find(c => c.status === "Active" || c.status === "Alive");
     if (!ruler) return;
 
+    const characterGender = character => typeof game.normalizeCharacterGender === 'function'
+        ? game.normalizeCharacterGender(character)
+        : (character.gender || 'Unknown');
+
     let treeHtml = `<div><strong>👑 ${ruler.name.toUpperCase()}</strong> (${ruler.role}, Age ${ruler.age}) • <span style="color:var(--accent-gold)">${game.getLifeStage(ruler.age)}</span></div>`;
     treeHtml += `<div>│</div>`;
 
@@ -351,6 +355,12 @@ function renderDynastyTreeVisualizer() {
         });
     }
 
+    const dynastyMembers = game.characters.filter(c =>
+        c.id === ruler.id || c.spouseId === ruler.id || c.parentId === ruler.id || c.motherId === ruler.id
+    );
+    if (dynastyMembers.length > 1) {
+        treeHtml += `<div style="margin-top:8px; color:var(--text-muted);">Dynasty gender records: ${dynastyMembers.map(c => `${c.name} — ${characterGender(c)}`).join(' • ')}</div>`;
+    }
     container.innerHTML = treeHtml;
 }
 
