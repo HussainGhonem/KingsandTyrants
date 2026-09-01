@@ -147,7 +147,7 @@ function renderCorporations() {
     if (!grid) return;
     grid.innerHTML = "";
     game.corporations.forEach(c => {
-        const ceo = game.characters.find(ch => ch.id === c.ceoId);
+        const ceo = game.characters.find(ch => ch.id === c.ceoId && !game.isCharacterDeceased(ch));
         grid.innerHTML += `
             <div class="dash-card">
                 <h4 style="color:var(--accent-gold); margin-bottom:2px;">${c.name.toUpperCase()}</h4>
@@ -198,7 +198,7 @@ function renderMilitaryBranches() {
     if (!grid) return;
     grid.innerHTML = "";
     game.military.branches.forEach(b => {
-        const cmd = game.characters.find(c => c.id === b.commanderId);
+        const cmd = game.characters.find(c => c.id === b.commanderId && !game.isCharacterDeceased(c));
         grid.innerHTML += `
             <div class="dash-card">
                 <h4 style="color:white; margin-bottom:2px;">${b.name.toUpperCase()}</h4>
@@ -280,7 +280,7 @@ function renderCompetingHouses() {
     if (!grid) return;
     grid.innerHTML = "";
     game.houses.forEach(h => {
-        const head = game.characters.find(c => c.id === h.headId);
+        const head = game.characters.find(c => c.id === h.headId && !game.isCharacterDeceased(c));
         grid.innerHTML += `
             <div class="dash-card">
                 <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
@@ -385,7 +385,7 @@ function selectProvince(id) {
     const details = document.getElementById('province-details');
     if (!details) return;
 
-    const gov = game.characters.find(c => c.id === p.governorId);
+    const gov = game.characters.find(c => c.id === p.governorId && !game.isCharacterDeceased(c));
 
     const investBtn = p.infra >= 100 ?
         `<button class="action-btn" disabled style="opacity:0.5;">🏗️ Max Infrastructure Reached</button>` :
@@ -517,7 +517,7 @@ function renderPartiesAndParliament() {
     if (!grid) return;
     grid.innerHTML = "";
     game.parties.forEach(p => {
-        const leader = game.characters.find(c => c.id === p.leaderId);
+        const leader = game.characters.find(c => c.id === p.leaderId && !game.isCharacterDeceased(c));
         grid.innerHTML += `
             <div class="dash-card">
                 <h4 style="color:white; margin-bottom:2px;">${p.name}</h4>
@@ -620,7 +620,7 @@ function renderIntelligenceDashboard() {
         } else {
             let html = '<ul style="margin-left:18px;">';
             game.intelligenceSystem.activeWiretaps.forEach(targetId => {
-                const target = game.characters.find(c => c.id === targetId);
+                const target = game.characters.find(c => c.id === targetId && !game.isCharacterDeceased(c));
                 const hasDossier = game.intelligenceSystem.discoveredSecrets.has(targetId);
                 html += `<li>Target: <strong>${target ? target.name : 'Unknown'}</strong> — ${hasDossier ? `<span style="color:var(--danger)">Dossier Unlocked: "${target.secret}"</span>` : 'Monitoring conversations...'}</li>`;
             });
@@ -661,7 +661,7 @@ function renderIntelligenceDashboard() {
             casesContainer.innerHTML = `<div class="dash-card"><span style="color:var(--text-muted)">No intelligence cases currently on file.</span></div>`;
         } else {
             casesContainer.innerHTML = cases.slice().reverse().map(c => {
-                const subject = game.characters.find(ch => ch.id === c.subjectId);
+                const subject = game.characters.find(ch => ch.id === c.subjectId && !game.isCharacterDeceased(ch));
                 const isOpen = c.status === 'Open';
                 return `
                     <div class="dash-card">
@@ -793,7 +793,7 @@ function renderRevolutionDashboard() {
     const fervor = game.regime.revolutionaryPressure;
 
     const leaderCards = r.leaders.map(lid => {
-        const ldr = game.characters.find(c => c.id === lid);
+        const ldr = game.characters.find(c => c.id === lid && !game.isCharacterDeceased(c));
         if (!ldr) return '';
         const statusColor = ldr.status === 'Imprisoned' ? 'var(--danger)' : ldr.exiled ? '#a78bfa' : '#34d399';
         const statusLabel = ldr.status === 'Imprisoned' ? '🔒 IMPRISONED' : ldr.exiled ? '✈️ EXILED' : '⚡ ACTIVE';

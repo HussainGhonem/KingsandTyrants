@@ -42,52 +42,52 @@ function getCharacter(id) {
 }
 
 function getHeadId() {
-    const activePlayer = game.characters?.find(c => c.isPlayer && (c.status === "Active" || c.status === "Alive"));
+    const activePlayer = game.characters?.find(c => c.isPlayer && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
     if (activePlayer) return activePlayer.id;
 
     if (game.dynasty?.headId) {
-        const head = game.characters?.find(c => c.id === game.dynasty.headId && (c.status === "Active" || c.status === "Alive"));
+        const head = game.characters?.find(c => c.id === game.dynasty.headId && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
         if (head) return head.id;
     }
 
     if (game.realm?.rulerId) {
-        const ruler = game.characters?.find(c => c.id === game.realm.rulerId && (c.status === "Active" || c.status === "Alive"));
+        const ruler = game.characters?.find(c => c.id === game.realm.rulerId && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
         if (ruler) return ruler.id;
     }
 
-    const fallback = game.characters?.find(c => (c.status === "Active" || c.status === "Alive"));
+    const fallback = game.characters?.find(c => !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
     return fallback ? fallback.id : 1;
 }
 
 function getHeirId() {
     const currentHeadId = getHeadId();
     if (game.dynasty?.heirId) {
-        const heir = game.characters?.find(c => c.id === game.dynasty.heirId && c.id !== currentHeadId && (c.status === "Active" || c.status === "Alive"));
+        const heir = game.characters?.find(c => c.id === game.dynasty.heirId && c.id !== currentHeadId && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
         if (heir) return heir.id;
     }
 
-    const candidate = game.characters?.find(c => c.id !== currentHeadId && (c.role?.includes("Heir") || c.role?.includes("Crown Prince") || c.type === "family") && (c.status === "Active" || c.status === "Alive"));
+    const candidate = game.characters?.find(c => c.id !== currentHeadId && (c.role?.includes("Heir") || c.role?.includes("Crown Prince") || c.type === "family") && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
     return candidate ? candidate.id : 2;
 }
 
 function getRulerCharacter() {
-    const activePlayer = game.characters?.find(c => c.isPlayer && (c.status === "Active" || c.status === "Alive"));
+    const activePlayer = game.characters?.find(c => c.isPlayer && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive"));
     if (activePlayer) return activePlayer;
 
     const headId = getHeadId();
     const head = getCharacter(headId);
-    if (head && (head.status === "Active" || head.status === "Alive")) return head;
+    if (head && !game.isCharacterDeceased(head) && (head.status === "Active" || head.status === "Alive")) return head;
 
-    return game.characters?.find(c => (c.status === "Active" || c.status === "Alive")) || null;
+    return game.characters?.find(c => !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive")) || null;
 }
 
 function getHeirCharacter() {
     const heirId = getHeirId();
     const heir = getCharacter(heirId);
-    if (heir && (heir.status === "Active" || heir.status === "Alive")) return heir;
+    if (heir && !game.isCharacterDeceased(heir) && (heir.status === "Active" || heir.status === "Alive")) return heir;
 
     const currentHeadId = getHeadId();
-    return game.characters?.find(c => c.id !== currentHeadId && c.type === "family" && (c.status === "Active" || c.status === "Alive")) || null;
+    return game.characters?.find(c => c.id !== currentHeadId && c.type === "family" && !game.isCharacterDeceased(c) && (c.status === "Active" || c.status === "Alive")) || null;
 }
 
 function getFaction(id) {

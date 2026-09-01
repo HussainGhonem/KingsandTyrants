@@ -307,13 +307,84 @@ function createSuspiciousDeathCase(character, reason = "Suspicious") {
     return caseRecord;
 }
 
+function replaceDeceasedRoles(character) {
+    if (!character) return;
+
+    // 1. House head
+    if (Array.isArray(game.houses)) {
+        game.houses.forEach(h => {
+            if (h.headId === character.id) {
+                const newHead = Array.isArray(game.characters) ? game.characters.find(c => c.houseId === h.id && !game.isCharacterDeceased(c)) : null;
+                if (newHead) {
+                    h.headId = newHead.id;
+                    log(`GREAT HOUSE SUCCESSION: ${newHead.name} assumed leadership of ${h.name}.`);
+                } else {
+                    h.headId = null;
+                    if (h.id !== "house_vance") {
+                        h.status = "Extinct";
+                        log(`EXTINCTION: ${h.name} has no living heirs!`);
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Corporation CEO
+    if (Array.isArray(game.corporations)) {
+        game.corporations.forEach(corp => {
+            if (corp.ceoId === character.id) {
+                const newCeo = Array.isArray(game.characters) ? game.characters.find(ch => !game.isCharacterDeceased(ch) && ch.id !== character.id && (ch.type === "cabinet" || ch.houseId === corp.houseId)) : null;
+                corp.ceoId = newCeo ? newCeo.id : null;
+                if (newCeo) log(`CORPORATE SUCCESSION: ${newCeo.name} appointed CEO of ${corp.name}.`);
+            }
+        });
+    }
+
+    // 3. Military Branch Commander
+    if (game.military && Array.isArray(game.military.branches)) {
+        game.military.branches.forEach(branch => {
+            if (branch.commanderId === character.id) {
+                const newCmd = Array.isArray(game.characters) ? game.characters.find(ch => !game.isCharacterDeceased(ch) && ch.id !== character.id && (ch.militarySupport > 30 || ch.type === "cabinet")) : null;
+                branch.commanderId = newCmd ? newCmd.id : null;
+                if (newCmd) log(`MILITARY COMMAND SUCCESSION: ${newCmd.name} appointed commander of ${branch.name}.`);
+            }
+        });
+    }
+
+    // 4. Political Party Leader
+    if (Array.isArray(game.parties)) {
+        game.parties.forEach(p => {
+            if (p.leaderId === character.id) {
+                const newLeader = Array.isArray(game.characters) ? game.characters.find(ch => !game.isCharacterDeceased(ch) && ch.id !== character.id && ch.type === "cabinet") : null;
+                p.leaderId = newLeader ? newLeader.id : null;
+            }
+        });
+    }
+
+    // 5. Provincial Governor
+    if (Array.isArray(game.provinces)) {
+        game.provinces.forEach(prov => {
+            if (prov.governorId === character.id) {
+                const newGov = Array.isArray(game.characters) ? game.characters.find(ch => !game.isCharacterDeceased(ch) && ch.id !== character.id && (ch.type === "cabinet" || ch.houseId)) : null;
+                prov.governorId = newGov ? newGov.id : null;
+            }
+        });
+    }
+
+    // 6. Revolutionary Leaders
+    if (game.revolution && Array.isArray(game.revolution.leaders)) {
+        game.revolution.leaders = game.revolution.leaders.filter(id => id !== character.id);
+    }
+}
+
 function killCharacter(character, reason = "Unknown") {
-    if (!character || character.status === "Deceased") return false;
+    if (!character || game.isCharacterDeceased(character)) return false;
 
     character.status = "Deceased";
     character.deathDate = game.date.toISOString();
     character.deathReason = reason;
     character.health = 0;
+    replaceDeceasedRoles(character);
     const resolvedRumorCount = resolveRumorsForDeceasedCharacter(character.id, character.name);
     if (resolvedRumorCount > 0 && (reason === "Assassination" || reason === "Suspicious")) {
         createSuspiciousDeathCase(character, reason);

@@ -159,7 +159,7 @@ async function openCharModalWithPortrait(id) {
 function preloadVisiblePortraits() {
     if (!portraitSystem || !game.characters) return;
     
-    const visibleChars = game.characters.filter(c => c.status !== "Deceased");
+    const visibleChars = game.characters.filter(c => !game.isCharacterDeceased(c));
     portraitSystem.preloadCharacterPortraits(visibleChars);
 }
 

@@ -1233,7 +1233,7 @@ function openCharModal(id) {
         let relHtml = '<div style="margin-top:8px; border-top:1px solid var(--panel-border); padding-top:6px;">';
         relHtml += '<h4 style="color:var(--text-muted); font-size:0.7rem; margin-bottom:4px;">Relationships Web</h4>';
         game.characters.forEach(other => {
-            if (other.id === c.id || other.status === "Deceased") return;
+            if (other.id === c.id || game.isCharacterDeceased(other)) return;
             const rel = game.getRelation(c.id, other.id);
             const color = rel.value >= 40 ? 'var(--success)' : (rel.value <= -40 ? 'var(--danger)' : 'var(--accent-gold)');
             relHtml += `<div style="display:flex; justify-content:space-between; font-size:0.7rem; padding:2px 0;">`;
@@ -1249,7 +1249,7 @@ function openCharModal(id) {
         const isAllied = game.getRelation(headId, c.id).alliance;
 
         let actionBtns = '';
-        if (c.status === "Deceased") {
+        if (game.isCharacterDeceased(c)) {
             actionBtns = `<div style="grid-column:1/-1; text-align:center; padding:8px; color:var(--text-muted);">✝️ Deceased Historical Character</div>`;
         } else if (isSelf) {
             actionBtns = `<div style="grid-column:1/-1; text-align:center; padding:8px; color:var(--accent-gold); font-weight:bold;">👑 Reigning Sovereign (Active Player)</div>`;
