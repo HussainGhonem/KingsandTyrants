@@ -400,8 +400,14 @@ game.normalizeCharacterGender = function(character) {
     const role = String(character.role || "").toLowerCase();
     const feminineTitle = /\b(wife|queen|duchess|mother|princess|lady|female)\b/.test(role);
     const masculineTitle = /\b(husband|king|duke|father|prince|lord|male)\b/.test(role);
-    if (feminineTitle) character.gender = "Female";
-    else if (masculineTitle) character.gender = "Male";
+    const spouse = Array.isArray(game.characters) && character.spouseId
+        ? game.characters.find(candidate => candidate.id === character.spouseId)
+        : null;
+    const spouseRole = String(spouse?.role || "").toLowerCase();
+    const spouseIsKing = /\b(king|duke|prince|lord|husband|male)\b/.test(spouseRole);
+    const spouseIsQueen = /\b(queen|duchess|princess|lady|wife|female)\b/.test(spouseRole);
+    if (feminineTitle || (spouseIsKing && !spouseIsQueen)) character.gender = "Female";
+    else if (masculineTitle || (spouseIsQueen && !spouseIsKing)) character.gender = "Male";
     else if (character.gender !== "Male" && character.gender !== "Female") character.gender = "Unknown";
     return character.gender;
 };

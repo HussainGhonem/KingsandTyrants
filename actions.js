@@ -494,7 +494,9 @@ function getCharacterAgeClass(character) {
 }
 
 function getCharacterPortraitVariant(character) {
-    const gender = (character.gender || 'Unknown').toLowerCase();
+    const gender = (typeof game.normalizeCharacterGender === 'function'
+        ? game.normalizeCharacterGender(character)
+        : (character.gender || 'Unknown')).toLowerCase();
     const isFemale = gender === 'female';
     const age = Number(character.age || 0);
     const roleClass = getCharacterRoleClass(character);
@@ -1159,6 +1161,9 @@ function drawCharacterPortrait(canvas, character) {
 function openCharModal(id) {
     const c = game.characters.find(x => x.id === id);
     if (!c) return;
+    const displayGender = typeof game.normalizeCharacterGender === 'function'
+        ? game.normalizeCharacterGender(c)
+        : (c.gender || 'Unknown');
 
     const modalName = document.getElementById('modal-char-name');
     const modalOpinion = document.getElementById('modal-char-opinion');
@@ -1169,7 +1174,7 @@ function openCharModal(id) {
     const actionsEl = document.getElementById('modal-actions');
 
     if (modelScene) {
-        const gender = String(c.gender || '').toLowerCase();
+        const gender = String(displayGender || '').toLowerCase();
         const face = gender === 'female' ? '👩' : gender === 'male' ? '👨' : '🧑';
         const traits = c.traits?.length ? c.traits.slice(0, 2).join(' • ') : 'No defining traits recorded';
         modelScene.innerHTML = `
@@ -1181,7 +1186,9 @@ function openCharModal(id) {
         `;
     }
 
-    const spouse = game.getSpouse(c);
+    const spouse = game.getSpouse(c) || (c.spouseId
+        ? game.characters.find(ch => ch.id === c.spouseId)
+        : game.characters.find(ch => ch.id !== c.id && ch.spouseId === c.id));
     const spouseText = spouse ? `Spouse: ${spouse.name} (${spouse.role})` : (c.married ? 'Spouse: Unconfirmed' : 'Spouse: None');
     const parentIds = Array.isArray(c.parents) && c.parents.length
         ? c.parents
@@ -1200,8 +1207,8 @@ function openCharModal(id) {
     ].filter(Boolean).join(' • ');
 
     if (modalName) modalName.innerText = c.name;
-    if (modalOpinion) modalOpinion.innerText = `Gender: ${c.gender || 'Unknown'} • Opinion: ${c.opinion}/100`;
-    if (modalDetails) modalDetails.innerText = `${c.role} • Gender: ${c.gender || 'Unknown'} • Status: ${c.status} • ${spouseText} • Traits: ${c.traits ? c.traits.join(', ') : 'None'}${profileExtras ? ` • ${profileExtras}` : ''}`;
+    if (modalOpinion) modalOpinion.innerText = `Gender: ${displayGender} • Opinion: ${c.opinion}/100`;
+    if (modalDetails) modalDetails.innerText = `${c.role} • Gender: ${displayGender} • Status: ${c.status} • ${spouseText} • Traits: ${c.traits ? c.traits.join(', ') : 'None'}${profileExtras ? ` • ${profileExtras}` : ''}`;
 
     const isDossierUnlocked = game.intelligenceSystem.discoveredSecrets.has(c.id);
 
