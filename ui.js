@@ -591,8 +591,12 @@ function renderIntelligenceDashboard() {
                 <div class="dash-card">
                     <h4 style="color:var(--warning); margin-bottom:4px;">RUMOR DOSSIER</h4>
                     <p style="font-size:0.78rem; color:var(--text-main); margin-bottom:6px;">"${r.text}"</p>
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">
+                        Status: <strong style="color:var(--accent-blue)">${r.status || (r.verified ? 'Confirmed' : 'Rumor')}</strong>
+                    </div>
                     <div style="font-size:0.72rem; display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span>Confidence: <strong>${r.confidence}%</strong></span>
+                        <span>Evidence: <strong>${typeof r.evidence === 'number' ? r.evidence : 0}%</strong></span>
                         <span>Threat Level: <strong style="color:var(--danger)">${r.risk}</strong></span>
                     </div>
                     <button class="action-btn primary" style="width:100%; text-align:center;" onclick="investigateRumor(${r.id})">🔍 Investigate Rumor (-$0.2B)</button>

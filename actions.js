@@ -299,15 +299,23 @@ function investigateRumor(rumorId) {
 
     game.realm.treasury -= 0.2;
     const rumor = game.intelligenceSystem.rumors[rIndex];
-    rumor.confidence = Math.min(100, rumor.confidence + 20);
-    rumor.verified = true;
+    const resolution = typeof resolveRumorInvestigation === 'function'
+        ? resolveRumorInvestigation(rumor)
+        : null;
 
-    const sourceChar = game.characters.find(c => c.id === rumor.sourceId);
-    if (sourceChar && sourceChar.secret) {
-        game.intelligenceSystem.discoveredSecrets.add(sourceChar.id);
-        log(`RUMOR INVESTIGATION CONCLUDED: Verified rumor! Dossier unlocked for ${sourceChar.name}: "${sourceChar.secret}"`);
+    if (resolution) {
+        log(`RUMOR INVESTIGATION CONCLUDED: ${resolution.outcome} - ${resolution.message}`);
     } else {
-        log(`RUMOR INVESTIGATION CONCLUDED: Rumor verified with ${rumor.confidence}% confidence rating.`);
+        rumor.confidence = Math.min(100, rumor.confidence + 20);
+        rumor.verified = true;
+
+        const sourceChar = game.characters.find(c => c.id === rumor.sourceId);
+        if (sourceChar && sourceChar.secret) {
+            game.intelligenceSystem.discoveredSecrets.add(sourceChar.id);
+            log(`RUMOR INVESTIGATION CONCLUDED: Verified rumor! Dossier unlocked for ${sourceChar.name}: "${sourceChar.secret}"`);
+        } else {
+            log(`RUMOR INVESTIGATION CONCLUDED: Rumor verified with ${rumor.confidence}% confidence rating.`);
+        }
     }
 
     updateUI();

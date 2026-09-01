@@ -763,7 +763,11 @@ function simulateIntelligenceCases() {
                     text: chosenText,
                     sourceId: target.id,
                     confidence: Math.floor(50 + Math.random() * 40),
+                    evidence: Math.floor(10 + Math.random() * 25),
+                    sourceReliability: Math.floor(40 + Math.random() * 35),
                     verified: false,
+                    status: "Rumor",
+                    investigationProgress: 0,
                     risk: Math.random() > 0.5 ? "High" : "Medium",
                     createdAt: new Date(game.date)
                 };
@@ -777,6 +781,151 @@ function simulateIntelligenceCases() {
     if (game.totalMonthsPassed && game.totalMonthsPassed % 6 === 0) {
         if (typeof saveGameToAutosave === 'function') saveGameToAutosave();
     }
+}
+
+function clampPercent(value) {
+    const num = Number(value);
+    if (!isFinite(num)) return 0;
+    return Math.min(100, Math.max(0, Math.round(num)));
+}
+
+function getRumorAssessmentLabel(rumor) {
+    if (!rumor) return "Rumor";
+    if (rumor.status) return rumor.status;
+    if ((rumor.evidence || 0) >= 80 || (rumor.confidence || 0) >= 90) return "Confirmed";
+    if ((rumor.evidence || 0) >= 55 || (rumor.confidence || 0) >= 65) return "Substantiated";
+    if ((rumor.confidence || 0) <= 15 && (rumor.evidence || 0) <= 10) return "Discredited";
+    return "Rumor";
+}
+
+function createIntelligenceCaseFromRumor(rumor, reason = "Investigative breakthrough") {
+    if (!game.intelligenceSystem) return null;
+    if (!game.intelligenceSystem.cases) game.intelligenceSystem.cases = [];
+
+    const caseRecord = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        title: rumor?.text || "Unnamed intelligence case",
+        sourceRumorId: rumor?.id || null,
+        subjectId: rumor?.sourceId ?? null,
+        status: "Open",
+        priority: rumor?.risk || "Medium",
+        evidence: clampPercent(rumor?.evidence || rumor?.confidence || 0),
+        createdAt: new Date(game.date),
+        notes: reason
+    };
+
+    game.intelligenceSystem.cases.push(caseRecord);
+    return caseRecord;
+}
+
+function resolveRumorInvestigation(rumor) {
+    if (!rumor) return { outcome: "Inconclusive", message: "No usable rumor dossier was available." };
+
+    if (typeof rumor.investigationProgress !== "number") rumor.investigationProgress = 0;
+    if (typeof rumor.evidence !== "number") rumor.evidence = Math.max(0, Math.min(100, Math.round((rumor.confidence || 0) * 0.35)));
+    if (typeof rumor.sourceReliability !== "number") rumor.sourceReliability = Math.max(0, Math.min(100, Math.round((rumor.confidence || 50) * 0.9)));
+    if (!rumor.status) rumor.status = "Rumor";
+
+    const intelligence = game.intelligenceSystem || {};
+    const domestic = intelligence.domestic || 50;
+    const counterIntel = intelligence.counterIntel || 50;
+    const oversight = (domestic + counterIntel) / 2;
+    const target = game.characters.find(c => c.id === rumor.sourceId);
+    const targetGuile = target ? ((target.ambition || 50) + (target.underSurveillance ? 10 : 0)) / 2 : 40;
+    const leadQuality = (rumor.sourceReliability + rumor.evidence + oversight) / 3;
+    const roll = Math.random() * 100;
+    const detectionRoll = Math.random() * 100;
+    const falseLeadRoll = Math.random() * 100;
+    const pressure = (targetGuile + (rumor.risk === "High" ? 10 : 0)) / 2;
+
+    rumor.investigationProgress = Math.min(100, rumor.investigationProgress + 25 + Math.floor(leadQuality / 10));
+
+    if (falseLeadRoll < Math.max(8, 28 - leadQuality / 5)) {
+        rumor.confidence = clampPercent(rumor.confidence - (15 + Math.random() * 20));
+        rumor.evidence = clampPercent(rumor.evidence - (10 + Math.random() * 15));
+        rumor.status = "False Lead";
+        return {
+            outcome: "False Lead",
+            message: "The investigation was fed misleading trails and burned time without proving the allegation."
+        };
+    }
+
+    if (detectionRoll < Math.max(6, 20 - oversight / 8)) {
+        rumor.status = "Counterintelligence Failure";
+        rumor.confidence = clampPercent(rumor.confidence + 5);
+        if (target) target.underSurveillance = true;
+        return {
+            outcome: "Counterintelligence Failure",
+            message: "The target detected the probe and likely knows the state is watching."
+        };
+    }
+
+    if (roll + leadQuality / 2 > 130) {
+        rumor.confidence = clampPercent(Math.max(rumor.confidence, 85));
+        rumor.evidence = clampPercent(Math.max(rumor.evidence, 70));
+        rumor.status = "Confirmed";
+        const caseRecord = createIntelligenceCaseFromRumor(rumor, "Confirmed allegation");
+        return {
+            outcome: "Confirmed",
+            message: caseRecord
+                ? `The rumor was confirmed and converted into an intelligence case: ${caseRecord.title}.`
+                : "The rumor was confirmed with strong supporting evidence."
+        };
+    }
+
+    if (roll + leadQuality / 2 > 105) {
+        rumor.confidence = clampPercent(Math.max(rumor.confidence, 65));
+        rumor.evidence = clampPercent(Math.max(rumor.evidence, 45));
+        rumor.status = "Substantiated";
+        return {
+            outcome: "Substantiated",
+            message: "The allegation is supported, but the evidence stops short of a clean takedown."
+        };
+    }
+
+    if (rumor.evidence >= 50 && roll > 60) {
+        rumor.status = "Source Exposed";
+        if (target) {
+            game.intelligenceSystem.discoveredSecrets.add(target.id);
+        }
+        return {
+            outcome: "Source Exposed",
+            message: target
+                ? `The investigation exposed the source network behind ${target.name}'s rumor stream.`
+                : "The investigation exposed the source network behind the rumor."
+        };
+    }
+
+    if (roll > 80 && rumor.evidence >= 35 && pressure > 35) {
+        rumor.status = "Rumor Becomes Intelligence Case";
+        rumor.confidence = clampPercent(Math.max(rumor.confidence, 60));
+        rumor.evidence = clampPercent(Math.max(rumor.evidence, 55));
+        const caseRecord = createIntelligenceCaseFromRumor(rumor, "Escalated from rumor to active case");
+        return {
+            outcome: "Rumor Becomes Intelligence Case",
+            message: caseRecord
+                ? `The rumor turned into an intelligence case: ${caseRecord.title}.`
+                : "The rumor escalated into a broader intelligence case."
+        };
+    }
+
+    if (rumor.confidence < 35) {
+        rumor.status = "Discredited";
+        rumor.confidence = clampPercent(rumor.confidence - (10 + Math.random() * 10));
+        rumor.evidence = clampPercent(rumor.evidence - (5 + Math.random() * 10));
+        return {
+            outcome: "Discredited",
+            message: "The investigation weakened the rumor and made it look substantially less credible."
+        };
+    }
+
+    rumor.status = "Inconclusive";
+    rumor.investigationProgress = Math.min(100, rumor.investigationProgress + 5);
+    rumor.evidence = clampPercent(rumor.evidence + 4);
+    return {
+        outcome: "Inconclusive",
+        message: "The probe produced fragments, but nothing decisive enough to close the file."
+    };
 }
 
 function runNarrativeAIDirector() {
