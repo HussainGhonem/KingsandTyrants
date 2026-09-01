@@ -632,6 +632,7 @@ function renderIntelligenceDashboard() {
                     <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">
                         Status: <strong style="color:var(--accent-blue)">${r.status || (r.verified ? 'Confirmed' : 'Rumor')}</strong>
                     </div>
+                    <button class="action-btn" style="width:100%; text-align:center; margin-bottom:6px;" onclick="closeRumor(${r.id})">Close Rumor</button>
                     <div style="font-size:0.72rem; display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span>Confidence: <strong>${r.confidence}%</strong></span>
                         <span>Evidence: <strong>${typeof r.evidence === 'number' ? r.evidence : 0}%</strong></span>

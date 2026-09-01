@@ -387,6 +387,26 @@ function closeIntelligenceCase(caseId, reason = "Closed by sovereign decision") 
     updateUI();
 }
 
+function closeRumor(rumorId, reason = "Closed without conclusive finding") {
+    const rumors = game.intelligenceSystem?.rumors;
+    if (!Array.isArray(rumors)) return;
+    const rumor = rumors.find(r => r.id === rumorId);
+    if (!rumor || rumor.status === "Resolved") return;
+
+    rumor.status = "Resolved";
+    rumor.resolution = "Closed by sovereign decision";
+    rumor.resolvedAt = game.date.toISOString();
+    rumor.resolutionNote = reason;
+    rumor.investigated = true;
+    log(`RUMOR CLOSED: ${rumor.text}. Reason: ${reason}.`);
+    game.monthActions ||= [];
+    game.monthActions.push({
+        headline: "RUMOR CLOSED BY THE CROWN",
+        lead: `The allegation concerning ${rumor.text} was closed without a conclusive finding. The dossier remains archived.`
+    });
+    updateUI();
+}
+
 function mollifyFaction(id) {
     const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
     const f = game.factions.find(x => x.id === numericId);
