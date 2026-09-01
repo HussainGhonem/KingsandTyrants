@@ -17,13 +17,19 @@ function simulateMonth() {
     // Generational Population Engine Tick
     simulatePopulation();
 
+    // Process Delayed Second-Order Consequences Queue
+    processDelayedEffects();
+
     // Propagation Graph Execution
+    simulateAutonomousCharacters();
     simulateGovernorsAndProvinces();
     simulateMacroEconomyAndCorporations();
     simulateDemographicsAndElections();
+    simulateParliamentTrust();
     simulateMilitaryAndGenerals();
     simulateProcurementPrograms();
     simulateDiplomacyAndForeignPowers();
+    simulateScandalsAndCorruption();
     simulateRevolution();          // ← Revolutionary State Machine
     simulateIntelligenceCases();   // Dynamic Intel Case Pipeline
     runNarrativeAIDirector();
@@ -85,6 +91,96 @@ function simulateProcurementPrograms() {
             game.monthActions.push({
                 headline: `MILITARY PROGRAM COMPLETED: ${program.name.toUpperCase()}`,
                 lead: `${program.name} has reached full deployment. Readiness +${program.readinessGain}, modernization +${program.modernizationGain}, and equipment +${program.equipmentGain}.`
+            });
+        }
+    });
+}
+
+// DELAYED CONSEQUENCES PROCESSOR
+function processDelayedEffects() {
+    if (!Array.isArray(game.delayedEffects)) return;
+
+    const currentMonth = game.totalMonthsPassed || 0;
+    const remaining = [];
+
+    game.delayedEffects.forEach(effect => {
+        if (currentMonth >= effect.executeAtMonth) {
+            try {
+                if (typeof effect.act === 'function') effect.act();
+            } catch (e) {
+                console.error("Error executing delayed effect:", effect.title, e);
+            }
+        } else {
+            remaining.push(effect);
+        }
+    });
+
+    game.delayedEffects = remaining;
+}
+
+// 0. AUTONOMOUS CHARACTER ENGINE
+function simulateAutonomousCharacters() {
+    if (!Array.isArray(game.characters)) return;
+
+    game.characters.forEach(c => {
+        if (c.status !== "Active" || c.isPlayer) return;
+
+        const ambition = c.ambition || 50;
+        const opinion = c.opinion !== undefined ? c.opinion : 50;
+        const traits = c.traits || [];
+
+        // 1. Expand followers and political power base
+        if (ambition > 60 && Math.random() < 0.3) {
+            c.followers = (c.followers || 2000) + Math.floor(Math.random() * 800) + 100;
+        }
+
+        // 2. Discontented characters leak scandals or spread rumors
+        if (opinion < 40 && ambition > 65 && Math.random() < 0.25) {
+            const rumorText = `${c.name} has been holding secret strategy sessions with opposition leaders.`;
+            if (game.intelligenceSystem && Array.isArray(game.intelligenceSystem.rumors)) {
+                const exists = game.intelligenceSystem.rumors.some(r => r.sourceId === c.id);
+                if (!exists) {
+                    game.intelligenceSystem.rumors.push({
+                        id: Date.now() + Math.floor(Math.random() * 1000),
+                        text: rumorText,
+                        sourceId: c.id,
+                        confidence: Math.floor(40 + Math.random() * 30),
+                        evidence: Math.floor(10 + Math.random() * 20),
+                        sourceReliability: 60,
+                        verified: false,
+                        status: "Rumor",
+                        investigationProgress: 0,
+                        risk: "Medium",
+                        createdAt: new Date(game.date)
+                    });
+                    log(`AUTONOMOUS ACTION: ${c.name} secretly circulated discrediting rumors against Citadel policy.`);
+                }
+            }
+        }
+
+        // 3. Ambitious military or noble figures recruit garrison support
+        if ((c.powerBase === "Military" || c.powerBase === "Garrison & Youth" || traits.includes("Hawk") || traits.includes("Reckless")) && ambition > 70 && Math.random() < 0.2) {
+            c.militarySupport = Math.min(100, (c.militarySupport || 50) + 2);
+            if (c.militarySupport > 80 && c.opinion < 45) {
+                game.military.officerConspiracy = Math.min(100, (game.military.officerConspiracy || 20) + 3);
+            }
+        }
+
+        // 4. Corrupt or wealthy characters bribe MPs or buy influence
+        if ((traits.includes("Corrupt") || traits.includes("Wealthy") || c.powerBase === "Oligarchs") && Math.random() < 0.2) {
+            if (c.opinion < 50) {
+                game.politics.parliamentSupport = Math.max(0, game.politics.parliamentSupport - 1);
+                game.politics.opposition = Math.min(100, game.politics.opposition + 1);
+            }
+        }
+
+        // 5. Extremely unhappy characters (opinion < 25) resign or threaten to walk out
+        if (opinion < 25 && c.type === "cabinet" && !c.resignationThreatened && Math.random() < 0.2) {
+            c.resignationThreatened = true;
+            log(`CABINET DISCONTENT: ${c.name} (${c.role}) has publicly threatened to resign unless government direction changes!`);
+            game.monthActions.push({
+                headline: `CABINET FRICTION: ${c.name.toUpperCase()} THREATENS RESIGNATION`,
+                lead: `${c.name} expressed deep discontent with Citadel policies, threatening to step down.`
             });
         }
     });
@@ -815,6 +911,66 @@ function simulateMacroEconomyAndCorporations() {
     });
 }
 
+// 3.5 PARLIAMENTARY TRUST & CONSTITUTIONAL CRISIS ENGINE
+function simulateParliamentTrust() {
+    if (!game.politics) return;
+
+    // High authoritarianism or active emergency powers degrade parliamentary trust
+    if (game.constitution?.emergencyActive) {
+        game.politics.parliamentaryTrust = Math.max(0, game.politics.parliamentaryTrust - 1.5);
+    } else if (game.politics.authoritarianism > 50) {
+        game.politics.parliamentaryTrust = Math.max(0, game.politics.parliamentaryTrust - 0.5);
+    } else {
+        // Natural gradual recovery if democracy respected
+        game.politics.parliamentaryTrust = Math.min(100, game.politics.parliamentaryTrust + 0.3);
+    }
+
+    // Low trust consequences
+    if (game.politics.parliamentaryTrust < 30) {
+        game.politics.opposition = Math.min(100, game.politics.opposition + 0.5);
+        game.politics.parliamentSupport = Math.max(10, game.politics.parliamentSupport - 0.5);
+    }
+
+    // Extremely low trust triggers CONSTITUTIONAL CRISIS event (once triggered via aiDirector or queue)
+    if (game.politics.parliamentaryTrust < 20 && !game.usedEvents.has("constitutional_crisis_event")) {
+        game.usedEvents.add("constitutional_crisis_event");
+        game.aiDirector.eventQueue.push({
+            id: "constitutional_crisis_event",
+            title: "⚖️ CONSTITUTIONAL CRISIS: PARLIAMENT DEFIANCE",
+            desc: "Parliamentary Trust has fallen below 20%! Opposition parties have formed an emergency bloc and the Constitutional Court has declared recent executive decrees unconstitutional. Parliament refuses to pass the state budget!",
+            choices: [
+                {
+                    text: "🏛️ Accept Parliamentary Supremacy (+25 Trust, -15 Authoritarianism)",
+                    act: () => {
+                        game.politics.parliamentaryTrust = 45;
+                        game.politics.authoritarianism = Math.max(0, game.politics.authoritarianism - 15);
+                        game.realm.approval = Math.min(100, game.realm.approval + 10);
+                        log("CONSTITUTIONAL RESOLUTION: Crown accepted parliamentary supremacy.");
+                    }
+                },
+                {
+                    text: "📜 Dissolve Parliament & Call Emergency Elections (-10 Stability, +Opposition Seats)",
+                    act: () => {
+                        game.politics.nextElectionYear = game.date.getFullYear();
+                        game.realm.stability = Math.max(0, game.realm.stability - 10);
+                        log("CONSTITUTIONAL DECREE: Sovereign dissolved Parliament and called snap elections.");
+                    }
+                },
+                {
+                    text: "⚔️ Suspend Constitution & Enforce Direct Sovereign Rule (-30 Approval, +40 Fervor)",
+                    act: () => {
+                        game.constitution.emergencyActive = true;
+                        game.politics.parliamentaryTrust = 0;
+                        game.realm.approval = Math.max(0, game.realm.approval - 30);
+                        game.regime.revolutionaryPressure = Math.min(100, game.regime.revolutionaryPressure + 40);
+                        log("CRITICAL CRISIS: Sovereign suspended the constitution and enforced absolute direct rule!");
+                    }
+                }
+            ]
+        });
+    }
+}
+
 // 4. DEMOGRAPHICS & ELECTIONS
 function simulateDemographicsAndElections() {
     game.sanitizeState();
@@ -905,6 +1061,68 @@ function simulateDiplomacyAndForeignPowers() {
 
         p.borderTension = Math.max(0, Math.min(100, (p.borderTension || 0) - 0.15));
     });
+}
+
+// 6.5 SCANDAL ENGINE & CORRUPTION ECOSYSTEM
+function simulateScandalsAndCorruption() {
+    if (!game.scandalEngine) game.scandalEngine = { activeScandals: [] };
+    if (!game.corruptionSystem) game.corruptionSystem = { corruption: 28, taxEfficiency: 82, eliteCapture: 35, governmentWaste: 20 };
+
+    const scandals = game.scandalEngine.activeScandals;
+    const corruption = game.corruptionSystem;
+
+    // Corruption affects tax efficiency and government waste
+    corruption.taxEfficiency = Math.max(30, Math.min(100, 100 - corruption.corruption * 0.5));
+    corruption.governmentWaste = Math.min(80, Math.max(5, corruption.corruption * 0.6));
+
+    // Process active scandals monthly
+    for (let i = scandals.length - 1; i >= 0; i--) {
+        const s = scandals[i];
+
+        // Media intensity grows or decays
+        s.mediaIntensity = Math.min(100, Math.max(0, s.mediaIntensity + (s.publicBelief > 50 ? 5 : -5)));
+
+        // Public belief drifts towards truth + evidence
+        const targetBelief = Math.min(100, (s.truth * 0.4) + (s.evidence * 0.6));
+        if (s.publicBelief < targetBelief) s.publicBelief = Math.min(100, s.publicBelief + 4);
+
+        // Impact on realm metrics
+        if (s.mediaIntensity > 40 && s.publicBelief > 40) {
+            game.realm.approval = Math.max(0, game.realm.approval - 0.5);
+            game.realm.reputation = Math.max(0, (game.realm.reputation || 50) - 0.5);
+            game.politics.parliamentaryTrust = Math.max(0, (game.politics.parliamentaryTrust || 50) - 0.5);
+        }
+
+        // Dissolve scandal when intensity drops to 0
+        if (s.mediaIntensity <= 0) {
+            log(`SCANDAL FADED: The press and public interest in "${s.title}" has subsided.`);
+            scandals.splice(i, 1);
+        }
+    }
+
+    // Spontaneous scandal generation if corruption or wiretaps fail
+    if (corruption.corruption > 40 && Math.random() < 0.08 && scandals.length < 3) {
+        const minister = game.characters.find(c => c.type === "cabinet" && c.status === "Active");
+        if (minister) {
+            const newScandal = {
+                id: Date.now(),
+                title: `Corruption Scandal: ${minister.name}`,
+                type: "Corruption",
+                subjectId: minister.id,
+                truth: Math.floor(50 + Math.random() * 40),
+                publicBelief: 25,
+                evidence: Math.floor(20 + Math.random() * 30),
+                mediaIntensity: 60,
+                politicalImpact: "Moderate"
+            };
+            scandals.push(newScandal);
+            log(`SCANDAL BREAKS: Newspaper headlines report allegations that ${minister.name} siphoned state funds!`);
+            game.monthActions.push({
+                headline: `SCANDAL: ${minister.name.toUpperCase()} ACCUSED OF CORRUPTION`,
+                lead: `Investigative reports claim ${minister.name} diverted state funds into unlisted offshore holding accounts.`
+            });
+        }
+    }
 }
 
 // 7. NARRATIVE AI DIRECTOR
