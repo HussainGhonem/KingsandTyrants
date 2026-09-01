@@ -131,30 +131,33 @@ game.houses = [
     { id: "house_valerian", name: "House Valerian", type: "Foreign Aristocratic House", headId: 6, wealth: 9.1, prestige: 610, loyaltyToCrown: 60, status: "Active" }
 ];
 
-// 9 Life Stages Rules Engine
+// 8 Precise Life Stages Rules Engine
 game.lifeStages = {
     INFANT: { name: "Infant", minAge: 0, maxAge: 5 },
-    CHILD: { name: "Child", minAge: 6, maxAge: 11 },
-    ADOLESCENT: { name: "Adolescent", minAge: 12, maxAge: 15 },
-    EDUCATION: { name: "Education", minAge: 16, maxAge: 17 },
+    CHILD: { name: "Child", minAge: 6, maxAge: 12 },
+    ADOLESCENT: { name: "Adolescent", minAge: 13, maxAge: 17 },
     YOUNG_ADULT: { name: "Young Adult", minAge: 18, maxAge: 24 },
     ADULT: { name: "Adult", minAge: 25, maxAge: 39 },
     MATURE: { name: "Mature", minAge: 40, maxAge: 59 },
     ELDER: { name: "Elder", minAge: 60, maxAge: 74 },
-    VERY_ELDER: { name: "Very Elder", minAge: 75, maxAge: 120 }
+    ELDERLY: { name: "Elderly", minAge: 75, maxAge: 120 }
 };
 
 game.getLifeStage = function(age) {
     if (age <= 5) return "Infant";
-    if (age <= 11) return "Child";
-    if (age <= 15) return "Adolescent";
-    if (age <= 17) return "Education";
+    if (age <= 12) return "Child";
+    if (age <= 17) return "Adolescent";
     if (age <= 24) return "Young Adult";
     if (age <= 39) return "Adult";
     if (age <= 59) return "Mature";
     if (age <= 74) return "Elder";
-    return "Very Elder";
+    return "Elderly";
 };
+
+// Deceased Historical Character Storage
+if (!game.history) game.history = { timeline: [], legacyPoints: 0, events: [], deceasedCharacters: [], chronicle: [] };
+if (!game.history.deceasedCharacters) game.history.deceasedCharacters = [];
+if (!game.history.chronicle) game.history.chronicle = [];
 
 // Military System with 6 Branches
 game.military = {
@@ -190,6 +193,60 @@ game.politics = {
     authoritarianism: 42,
     activeBill: null,
     nextElectionYear: game.date.getFullYear() + 4
+};
+
+// Succession Registry & Laws Engine (Tasks 8 & 9)
+game.succession = {
+    law: "Absolute Primogeniture", // "Absolute Primogeniture", "Male Preference", "Male Only", "Elective Monarchy", "Parliamentary Succession", "Dynastic Selection", "Military Succession"
+    registry: [] // [{ rank, characterId, name, claimStrength, legitimacy, politicalSupport, militarySupport, popularSupport }]
+};
+
+game.updateSuccessionRegistry = function() {
+    if (!Array.isArray(game.characters)) return;
+
+    const rulerId = (typeof getHeadId === 'function') ? getHeadId() : (game.dynasty?.headId || 1);
+    const ruler = game.characters.find(c => c.id === rulerId);
+
+    // Filter potential heirs (living family members or high claim candidates)
+    let candidates = game.characters.filter(c => c.id !== rulerId && !game.isCharacterDeceased(c));
+
+    // Sort according to active law
+    const law = game.succession.law || "Absolute Primogeniture";
+    candidates.sort((a, b) => {
+        if (law === "Male Preference") {
+            if (a.gender === "Male" && b.gender !== "Male") return -1;
+            if (a.gender !== "Male" && b.gender === "Male") return 1;
+        } else if (law === "Male Only") {
+            if (a.gender === "Male" && b.gender !== "Male") return -1;
+            if (a.gender !== "Male" && b.gender === "Male") return 1;
+        } else if (law === "Military Succession") {
+            return (b.militarySupport || 0) - (a.militarySupport || 0);
+        } else if (law === "Parliamentary Succession") {
+            return (b.publicSupport || 0) - (a.publicSupport || 0);
+        }
+        // Default / Primogeniture / Dynasty tiebreaker: Claim strength then age
+        if ((b.claimStrength || 0) !== (a.claimStrength || 0)) {
+            return (b.claimStrength || 0) - (a.claimStrength || 0);
+        }
+        return (a.age || 0) - (b.age || 0);
+    });
+
+    game.succession.registry = candidates.slice(0, 5).map((c, idx) => ({
+        rank: idx + 1,
+        characterId: c.id,
+        name: c.name,
+        role: c.role,
+        gender: c.gender,
+        age: c.age,
+        claimStrength: c.claimStrength || 50,
+        legitimacy: c.dynasticLoyalty || 70,
+        militarySupport: c.militarySupport || 40,
+        publicSupport: c.publicSupport || 40
+    }));
+
+    if (game.succession.registry.length > 0) {
+        game.dynasty.heirId = game.succession.registry[0].characterId;
+    }
 };
 
 // Political Parties with 5-Axis Ideology Vectors

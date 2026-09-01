@@ -333,34 +333,69 @@ function renderDynastyTreeVisualizer() {
         ? game.normalizeCharacterGender(character)
         : (character.gender || 'Unknown');
 
-    let treeHtml = `<div><strong>👑 ${ruler.name.toUpperCase()}</strong> (${ruler.role}, Age ${ruler.age}) • <span style="color:var(--accent-gold)">${game.getLifeStage(ruler.age)}</span></div>`;
-    treeHtml += `<div>│</div>`;
+    // Visual Family Tree Node Renderer
+    function renderNodeCard(c, isRoot = false) {
+        const isDeceased = game.isCharacterDeceased(c);
+        const stage = game.getLifeStage(c.age);
+        const borderCol = isRoot ? 'var(--accent-gold)' : (isDeceased ? 'var(--text-muted)' : 'var(--accent-blue)');
+        const bgCol = isDeceased ? '#0f172a' : '#0b1324';
+
+        return `
+            <div style="background:${bgCol}; border:1px solid ${borderCol}; border-radius:6px; padding:6px 10px; cursor:pointer; min-width:160px;" onclick="openCharModal(${c.id})">
+                <div style="font-weight:bold; font-size:0.8rem; color:${isRoot ? 'var(--accent-gold)' : 'white'};">
+                    ${isRoot ? '👑 ' : ''}${c.name} ${isDeceased ? '✝️' : ''}
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">
+                    Age ${c.age} (${stage}) • ${c.role || 'Family'}
+                </div>
+                <div style="font-size:0.68rem; color:var(--accent-blue);">
+                    Claim: ${c.claimStrength || 50}% ${c.married ? '• 💍 Married' : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    let treeHtml = `<div style="display:flex; flex-direction:column; gap:12px; font-family:monospace;">`;
+
+    // Root Node (Ruler)
+    treeHtml += `<div style="display:flex; justify-content:center;">${renderNodeCard(ruler, true)}</div>`;
+    treeHtml += `<div style="text-align:center; color:var(--text-muted);">│</div>`;
 
     // Children & descendants
-    const children = game.characters.filter(c => c.parentId === ruler.id || c.motherId === ruler.id);
+    const children = game.characters.filter(c => (c.parentId === ruler.id || c.motherId === ruler.id));
     if (children.length === 0) {
-        treeHtml += `<div>└── <span style="color:var(--text-muted)">(No direct heirs yet)</span></div>`;
+        treeHtml += `<div style="text-align:center; font-size:0.75rem; color:var(--text-muted);">(No direct heirs born yet)</div>`;
     } else {
-        children.forEach((ch, idx) => {
-            const isLast = idx === children.length - 1;
-            const prefix = isLast ? '└── ' : '├── ';
-            const stage = game.getLifeStage(ch.age);
-            treeHtml += `<div>${prefix}<strong>${ch.name}</strong> (Age ${ch.age}, ${stage}) ${ch.married ? '💍' : ''} — Claim: ${ch.claimStrength}%</div>`;
-            
-            // Grandchildren
+        treeHtml += `<div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">`;
+        children.forEach((ch) => {
             const grandChildren = game.characters.filter(gc => gc.parentId === ch.id || gc.motherId === ch.id);
-            grandChildren.forEach(gc => {
-                treeHtml += `<div>│   └── ${gc.name} (Age ${gc.age}, ${game.getLifeStage(gc.age)})</div>`;
-            });
+            treeHtml += `<div style="display:flex; flex-direction:column; align-items:center; gap:6px;">`;
+            treeHtml += renderNodeCard(ch);
+            if (grandChildren.length > 0) {
+                treeHtml += `<div style="color:var(--text-muted);">│</div>`;
+                treeHtml += `<div style="display:flex; gap:8px;">`;
+                grandChildren.forEach(gc => {
+                    treeHtml += renderNodeCard(gc);
+                });
+                treeHtml += `</div>`;
+            }
+            treeHtml += `</div>`;
         });
+        treeHtml += `</div>`;
     }
 
-    const dynastyMembers = game.characters.filter(c =>
-        c.id === ruler.id || c.spouseId === ruler.id || c.parentId === ruler.id || c.motherId === ruler.id
-    );
-    if (dynastyMembers.length > 1) {
-        treeHtml += `<div style="margin-top:8px; color:var(--text-muted);">Dynasty gender records: ${dynastyMembers.map(c => `${c.name} — ${characterGender(c)}`).join(' • ')}</div>`;
+    // Deceased Historical Family Members List
+    if (game.history && game.history.deceasedCharacters && game.history.deceasedCharacters.length > 0) {
+        treeHtml += `<div style="margin-top:14px; border-top:1px dashed var(--panel-border); padding-top:8px; font-size:0.72rem;">`;
+        treeHtml += `<h5 style="color:var(--text-muted); margin-bottom:4px;">Deceased Dynastic Ancestors Registry</h5>`;
+        treeHtml += `<div style="display:flex; gap:8px; flex-wrap:wrap;">`;
+        game.history.deceasedCharacters.forEach(dc => {
+            treeHtml += `<span style="background:#0f172a; padding:2px 6px; border-radius:3px; border:1px solid #334155; color:var(--text-muted);">✝️ ${dc.name} (Age ${dc.ageAtDeath}, ${dc.causeOfDeath})</span>`;
+        });
+        treeHtml += `</div></div>`;
     }
+
+    treeHtml += `</div>`;
     container.innerHTML = treeHtml;
 }
 
