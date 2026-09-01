@@ -63,15 +63,59 @@ function adjustTax(dir) {
     updateUI();
 }
 
-function adjustMilitaryBudget(cost) {
-    if (game.realm.treasury >= cost) {
-        game.realm.treasury -= cost;
-        game.military.readiness += 10;
-        log("Authorized discretionary defense procurement budget.");
-        updateUI();
-    } else {
-        log("Insufficient treasury reserves for defense procurement.");
+const PROCUREMENT_PROGRAMS = {
+    smallArms: { name: "Small Arms & Logistics", cost: 0.25, duration: 3, readinessGain: 3, modernizationGain: 0, equipmentGain: 3, midpointEquipmentGain: 1, industrialCapacityGain: 1 },
+    armored: { name: "Armored Forces", cost: 0.75, duration: 5, readinessGain: 8, modernizationGain: 0, equipmentGain: 5, midpointEquipmentGain: 2, powerField: "armyPower", powerGain: 4, industrialCapacityGain: 2 },
+    airforce: { name: "Air Force Modernization", cost: 1.2, duration: 8, readinessGain: 12, modernizationGain: 8, equipmentGain: 4, midpointEquipmentGain: 4, powerField: "airPower", powerGain: 20, industrialCapacityGain: 2 },
+    navy: { name: "Naval Expansion", cost: 1.5, duration: 10, readinessGain: 10, modernizationGain: 4, equipmentGain: 5, midpointEquipmentGain: 4, powerField: "navalPower", powerGain: 10, industrialCapacityGain: 3 },
+    strategic: { name: "Strategic Weapons Program", cost: 3, duration: 14, readinessGain: 20, modernizationGain: 12, equipmentGain: 6, midpointEquipmentGain: 5, powerField: "armyPower", powerGain: 20, industrialCapacityGain: 4, diplomaticPenalty: 8 }
+};
+
+function defenseProcurement(categoryId = 'armored') {
+    const specification = PROCUREMENT_PROGRAMS[categoryId] || PROCUREMENT_PROGRAMS.armored;
+    const military = game.military;
+    const cost = specification.cost;
+
+    military.procurementHistory ||= [];
+    military.procurementPrograms ||= [];
+
+    if (game.realm.treasury < cost) {
+        log(`Defense procurement request denied: insufficient treasury funds for ${specification.name}.`);
+        return;
     }
+
+    game.realm.treasury -= cost;
+    military.procurementBudget = (military.procurementBudget || 0) + cost;
+    military.procurementPrograms.push({
+        id: `procurement_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        ...specification,
+        status: "In Production",
+        monthsCompleted: 0,
+        progress: 0,
+        midpointDelivered: false,
+        contractedDate: game.date.toISOString()
+    });
+
+    military.readiness = Math.min(150, (military.readiness || 0) + 1);
+    game.economy ||= {};
+    game.economy.industrialCapacity = Math.min(100, (game.economy.industrialCapacity || 0) + specification.industrialCapacityGain);
+    const militaryFaction = game.factions?.find(f => f.id === 2);
+    if (militaryFaction) militaryFaction.loyalty = Math.min(100, (militaryFaction.loyalty || 0) + 8);
+    game.realm.approval = Math.max(0, (game.realm.approval || 0) - (specification.diplomaticPenalty ? 4 : 2));
+    if (specification.diplomaticPenalty) {
+        game.diplomacy?.powers?.forEach(power => { power.relations = Math.max(-100, (power.relations || 0) - specification.diplomaticPenalty); });
+    }
+
+    log(`Defense procurement approved: ${specification.name} contracted for $${cost.toFixed(2)}B. Production begins; readiness +1, industrial capacity +${specification.industrialCapacityGain}.`);
+    game.monthActions.push({
+        headline: `${specification.name.toUpperCase()} CONTRACT SIGNED`,
+        lead: `The government authorized $${cost.toFixed(2)}B for a ${specification.duration}-month military modernization program. Treasury funds have been committed and production has begun.`
+    });
+    updateUI();
+}
+
+function adjustMilitaryBudget(cost) {
+    defenseProcurement(cost === 0.5 ? 'armored' : 'smallArms');
 }
 
 function issueSovereignBonds(amount) {

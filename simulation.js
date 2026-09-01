@@ -5,6 +5,7 @@ let totalSurveillanceUpkeep = 0;
 
 function simulateMonth() {
     if (game.activeEvent) return;
+    game.monthActions = [];
 
     if (game.constitution?.emergencyActive) {
         game.constitution.emergencyMonths = (game.constitution.emergencyMonths || 0) + 1;
@@ -21,6 +22,7 @@ function simulateMonth() {
     simulateMacroEconomyAndCorporations();
     simulateDemographicsAndElections();
     simulateMilitaryAndGenerals();
+    simulateProcurementPrograms();
     simulateDiplomacyAndForeignPowers();
     simulateRevolution();          // ← Revolutionary State Machine
     simulateIntelligenceCases();   // Dynamic Intel Case Pipeline
@@ -43,11 +45,49 @@ function simulateMonth() {
     processEventsMonthly();
 
     publishWorldInformationEcosystem();
-    game.monthActions = [];
 
     // Auto-save state
     saveGame();
     updateUI();
+}
+
+// Procurement contracts move from signed contracts to delivered capability over time.
+function simulateProcurementPrograms() {
+    const military = game.military;
+    if (!military) return;
+    military.procurementHistory ||= [];
+    military.procurementPrograms ||= [];
+
+    military.procurementPrograms.forEach(program => {
+        if (program.status !== "In Production") return;
+
+        program.monthsCompleted = Math.min(program.duration, (program.monthsCompleted || 0) + 1);
+        program.progress = Math.round((program.monthsCompleted / program.duration) * 100);
+
+        if (!program.midpointDelivered && program.monthsCompleted >= Math.ceil(program.duration / 2)) {
+            program.midpointDelivered = true;
+            military.equipment = Math.min(100, (military.equipment || 0) + program.midpointEquipmentGain);
+            log(`${program.name}: first delivery received. Equipment +${program.midpointEquipmentGain}.`);
+            game.monthActions.push({
+                headline: `DEFENSE DELIVERY: ${program.name.toUpperCase()}`,
+                lead: `The first shipment from the ${program.name} contract has entered service. Equipment readiness is beginning to improve.`
+            });
+        }
+
+        if (program.monthsCompleted >= program.duration) {
+            program.status = "Completed";
+            military.readiness = Math.min(150, (military.readiness || 0) + program.readinessGain);
+            military.modernization = Math.min(100, (military.modernization || 0) + program.modernizationGain);
+            military.equipment = Math.min(100, (military.equipment || 0) + program.equipmentGain);
+            if (program.powerField) military[program.powerField] = Math.min(100, (military[program.powerField] || 0) + program.powerGain);
+            military.procurementHistory.push({ date: game.date.toISOString(), name: program.name, cost: program.cost, readinessGain: program.readinessGain, modernizationGain: program.modernizationGain, equipmentGain: program.equipmentGain, powerField: program.powerField, powerGain: program.powerGain });
+            log(`PROCUREMENT COMPLETE: ${program.name}. Military capability delivered.`);
+            game.monthActions.push({
+                headline: `MILITARY PROGRAM COMPLETED: ${program.name.toUpperCase()}`,
+                lead: `${program.name} has reached full deployment. Readiness +${program.readinessGain}, modernization +${program.modernizationGain}, and equipment +${program.equipmentGain}.`
+            });
+        }
+    });
 }
 
 // 1. GENERATIONAL POPULATION ENGINE

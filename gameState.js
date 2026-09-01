@@ -85,6 +85,10 @@ game.budget = {
     issuedBonds: 5.0
 };
 
+game.economy = {
+    industrialCapacity: 75
+};
+
 game.economyPolicies = {
     devalued: false,
     monopolyTaxBreaks: []
@@ -138,7 +142,15 @@ game.getLifeStage = function(age) {
 // Military System with 6 Branches
 game.military = {
     readiness: 105,
+    modernization: 35,
+    equipment: 60,
     manpower: 420000,
+    airPower: 48,
+    navalPower: 35,
+    armyPower: 70,
+    procurementBudget: 0,
+    procurementHistory: [],
+    procurementPrograms: [],
     warExhaustion: 8,
     coupRisk: 8,
     officerConspiracy: 38,
@@ -388,6 +400,16 @@ game.sanitizeState = function() {
     if (!game.politics) game.politics = {};
     if (!game.regime) game.regime = {};
     if (!game.revolution) game.revolution = {};
+    if (!game.military) game.military = {};
+    game.economy ||= {};
+    game.economy.industrialCapacity = game.clampMetric(game.economy.industrialCapacity, 0, 100);
+    game.military.modernization = game.clampMetric(game.military.modernization, 0, 100);
+    game.military.equipment = game.clampMetric(game.military.equipment, 0, 100);
+    game.military.airPower = game.clampMetric(game.military.airPower, 0, 100);
+    game.military.navalPower = game.clampMetric(game.military.navalPower, 0, 100);
+    game.military.armyPower = game.clampMetric(game.military.armyPower, 0, 100);
+    game.military.procurementHistory ||= [];
+    game.military.procurementPrograms ||= [];
 
     game.realm.approval = game.clampMetric(game.realm.approval, 0, 100);
     game.realm.legitimacy = game.clampMetric(game.realm.legitimacy, 0, 100);

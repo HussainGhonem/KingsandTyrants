@@ -56,6 +56,7 @@ function updateUI() {
 
     renderCourt();
     renderBudgetLedger();
+    renderMilitaryProcurement();
     renderCorporations();
     renderConstitutionEditor();
     renderMilitaryBranches();
@@ -207,6 +208,42 @@ function renderMilitaryBranches() {
             </div>
         `;
     });
+}
+
+function renderMilitaryProcurement() {
+    const panel = document.getElementById('military-procurement-panel');
+    if (!panel || !game.military) return;
+    const military = game.military;
+    military.procurementPrograms ||= [];
+    const faction = game.factions?.find(f => f.id === 2);
+    const activePrograms = military.procurementPrograms.filter(p => p.status === 'In Production');
+    const cards = Object.entries(PROCUREMENT_PROGRAMS).map(([id, p]) => `
+        <div class="dash-card" style="padding:10px;">
+            <h4 style="color:white; margin-bottom:4px;">${p.name}</h4>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:6px;">$${p.cost.toFixed(2)}B • ${p.duration} months</div>
+            <div style="font-size:0.72rem;">Completion: +${p.readinessGain} readiness • +${p.equipmentGain} equipment${p.powerField ? ` • +${p.powerGain} ${p.powerField.replace('Power', ' power')}` : ''}</div>
+            <button class="action-btn" style="width:100%; margin-top:8px;" onclick="defenseProcurement('${id}')">Authorize Contract</button>
+        </div>
+    `).join('');
+    const active = activePrograms.length ? activePrograms.map(p => `
+        <div style="font-size:0.76rem; margin-top:6px;">
+            <strong>${p.name}</strong> <span style="color:var(--accent-gold);">Month ${p.monthsCompleted}/${p.duration}</span>
+            <div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%"></div></div>
+        </div>
+    `).join('') : '<div style="font-size:0.75rem; color:var(--text-muted);">No active procurement contracts.</div>';
+    panel.innerHTML = `
+        <h3 style="color:var(--accent-gold); margin-bottom:8px;">Defense Procurement Office</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:8px; font-size:0.78rem; margin-bottom:10px;">
+            <div>Treasury: <strong>$${game.realm.treasury.toFixed(2)}B</strong></div>
+            <div>Readiness: <strong>${(military.readiness || 0).toFixed(0)}%</strong></div>
+            <div>Equipment: <strong>${(military.equipment || 0).toFixed(0)}%</strong></div>
+            <div>Modernization: <strong>${(military.modernization || 0).toFixed(0)}%</strong></div>
+            <div>Industrial Capacity: <strong>${(game.economy?.industrialCapacity || 0).toFixed(0)}%</strong></div>
+            <div>Military Loyalty: <strong>${(faction?.loyalty || 0).toFixed(0)}%</strong></div>
+        </div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">Active Contracts</div>${active}
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:8px; margin-top:12px;">${cards}</div>
+    `;
 }
 
 function renderDiplomacyPowers() {
